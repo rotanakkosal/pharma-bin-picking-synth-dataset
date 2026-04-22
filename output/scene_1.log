@@ -1,0 +1,230 @@
+OBJ import: cannot read from MTL file: '/home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/output/_tmp_meshes/레보진시럽.mtl'
+/home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/.venv_synth/lib/python3.11/site-packages/blenderproc/python/types/MeshObjectUtility.py:259: UserWarning: MeshObject 레보진시럽_template has no rigid_body component enabled
+  warnings.warn(f"MeshObject {self.get_name()} has no rigid_body component enabled")
+OBJ import: cannot read from MTL file: '/home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/output/_tmp_meshes/콜민A시럽.mtl'
+/home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/.venv_synth/lib/python3.11/site-packages/blenderproc/python/types/MeshObjectUtility.py:259: UserWarning: MeshObject 콜민A시럽_template has no rigid_body component enabled
+  warnings.warn(f"MeshObject {self.get_name()} has no rigid_body component enabled")
+OBJ import: cannot read from MTL file: '/home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/output/_tmp_meshes/파란뚜껑 약통.mtl'
+/home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/.venv_synth/lib/python3.11/site-packages/blenderproc/python/types/MeshObjectUtility.py:259: UserWarning: MeshObject 파란뚜껑 약통_template has no rigid_body component enabled
+  warnings.warn(f"MeshObject {self.get_name()} has no rigid_body component enabled")
+OBJ import: cannot read from MTL file: '/home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/output/_tmp_meshes/하얀 약통.mtl'
+/home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/.venv_synth/lib/python3.11/site-packages/blenderproc/python/types/MeshObjectUtility.py:259: UserWarning: MeshObject 하얀 약통_template has no rigid_body component enabled
+  warnings.warn(f"MeshObject {self.get_name()} has no rigid_body component enabled")
+Selecting render devices...
+Device NVIDIA RTX A6000 of type CUDA found and used.
+Device NVIDIA RTX A6000 of type CUDA found and used.
+Device AMD Ryzen Threadripper PRO 5955WX 16-Cores of type CPU found and used.
+[info] loaded 4 mesh classes from /home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/sample_data/Medicine box OBJ_260324/2026-04-22
+[info] placed 32 bottle instances
+Running simulation up to 3 seconds (72 frames)
+Running simulation up to 4 seconds (96 frames)
+Running simulation up to 5 seconds (120 frames)
+Stopping simulation as configured max_simulation_time has been reached
+Rendering 1 frames of colors, depth...
+
+Finished rendering after 6.961 seconds
+Rendering 1 frames of colors, depth...
+
+Finished rendering after 2.351 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+[info] rendering amodal masks for 32 instances...
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.739 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.726 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.710 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.731 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.741 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.783 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.755 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.751 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.533 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.512 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.518 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.542 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.552 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.522 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.524 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.530 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.562 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.534 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.534 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.562 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.562 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.556 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.533 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.575 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.542 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.505 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.526 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.527 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.544 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.505 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.540 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+Rendering 1 frames of colors, depth, segmap...
+
+Finished rendering after 0.511 seconds
+/dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296/seg_0000.exr (1080, 1920, 3)
+Warning! Detected output entries with duplicate keys and paths
+Warning! Detected output entries with duplicate keys and paths
+[ok] scene saved to /home/kosal/cbnu_project/AI/picking-arm-robot/synthetic_dataset_generate/output/scene_000001
+     27 instances total, 5 partially occluded
+
+Blender quit
+Warning: Changed install path from /home_local/kosal... to /home/kosal..., there is no /home_local/ on this machine.
+Using blender in /home/kosal/blender/blender-4.2.1-linux-x64
+Using temporary directory: /dev/shm/blender_proc_bd89be75a91e46419c7d9cf242720296
+Cleaning temporary directory

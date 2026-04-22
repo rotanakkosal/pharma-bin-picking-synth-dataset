@@ -1,0 +1,14 @@
+{
+  "marker_length_mm": 145.0,
+  "marker_ids": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "workspace_width_mm": 850.0,
+  "workspace_height_mm": 480.0,
+  "object_offset_x": 0.0,
+  "object_offset_y": 0.0,
+  "object_offset_z": 0.0
+}

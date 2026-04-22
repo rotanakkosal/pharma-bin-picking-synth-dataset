@@ -1,0 +1,537 @@
+{
+  "image_id": 0,
+  "rgb": "rgb/0000.png",
+  "depth": "depth/0000.png",
+  "depth_unit": "mm",
+  "width": 1920,
+  "height": 1080,
+  "camera_K": [
+    [
+      1349.4442138671875,
+      0,
+      988.072021484375
+    ],
+    [
+      0,
+      1350.024658203125,
+      559.8935546875
+    ],
+    [
+      0,
+      0,
+      1
+    ]
+  ],
+  "instances": [
+    {
+      "instance_id": 8,
+      "class_name": "레보진시럽_00",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0008.png",
+      "amodal_mask": "amodal_masks/0000_0008.png",
+      "occlusion_mask": "occlusion_masks/0000_0008.png",
+      "visible_px": 15771,
+      "amodal_px": 15771,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        843,
+        385,
+        149,
+        216
+      ]
+    },
+    {
+      "instance_id": 9,
+      "class_name": "레보진시럽_01",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0009.png",
+      "amodal_mask": "amodal_masks/0000_0009.png",
+      "occlusion_mask": "occlusion_masks/0000_0009.png",
+      "visible_px": 17088,
+      "amodal_px": 17088,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        955,
+        469,
+        217,
+        175
+      ]
+    },
+    {
+      "instance_id": 11,
+      "class_name": "레보진시럽_03",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0011.png",
+      "amodal_mask": "amodal_masks/0000_0011.png",
+      "occlusion_mask": "occlusion_masks/0000_0011.png",
+      "visible_px": 17659,
+      "amodal_px": 17659,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        1094,
+        577,
+        205,
+        198
+      ]
+    },
+    {
+      "instance_id": 12,
+      "class_name": "레보진시럽_04",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0012.png",
+      "amodal_mask": "amodal_masks/0000_0012.png",
+      "occlusion_mask": "occlusion_masks/0000_0012.png",
+      "visible_px": 16351,
+      "amodal_px": 16351,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        1033,
+        310,
+        225,
+        84
+      ]
+    },
+    {
+      "instance_id": 13,
+      "class_name": "레보진시럽_05",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0013.png",
+      "amodal_mask": "amodal_masks/0000_0013.png",
+      "occlusion_mask": "occlusion_masks/0000_0013.png",
+      "visible_px": 13963,
+      "amodal_px": 15828,
+      "occlusion_rate": 0.1178,
+      "bbox_xywh_amodal": [
+        953,
+        396,
+        208,
+        168
+      ]
+    },
+    {
+      "instance_id": 14,
+      "class_name": "레보진시럽_06",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0014.png",
+      "amodal_mask": "amodal_masks/0000_0014.png",
+      "occlusion_mask": "occlusion_masks/0000_0014.png",
+      "visible_px": 16279,
+      "amodal_px": 16279,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        664,
+        583,
+        221,
+        151
+      ]
+    },
+    {
+      "instance_id": 15,
+      "class_name": "레보진시럽_07",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0015.png",
+      "amodal_mask": "amodal_masks/0000_0015.png",
+      "occlusion_mask": "occlusion_masks/0000_0015.png",
+      "visible_px": 15782,
+      "amodal_px": 15789,
+      "occlusion_rate": 0.0004,
+      "bbox_xywh_amodal": [
+        864,
+        603,
+        217,
+        147
+      ]
+    },
+    {
+      "instance_id": 17,
+      "class_name": "콜민A시럽_00",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0017.png",
+      "amodal_mask": "amodal_masks/0000_0017.png",
+      "occlusion_mask": "occlusion_masks/0000_0017.png",
+      "visible_px": 16711,
+      "amodal_px": 16711,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        599,
+        318,
+        98,
+        224
+      ]
+    },
+    {
+      "instance_id": 18,
+      "class_name": "콜민A시럽_01",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0018.png",
+      "amodal_mask": "amodal_masks/0000_0018.png",
+      "occlusion_mask": "occlusion_masks/0000_0018.png",
+      "visible_px": 16805,
+      "amodal_px": 16805,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        328,
+        447,
+        205,
+        182
+      ]
+    },
+    {
+      "instance_id": 19,
+      "class_name": "콜민A시럽_02",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0019.png",
+      "amodal_mask": "amodal_masks/0000_0019.png",
+      "occlusion_mask": "occlusion_masks/0000_0019.png",
+      "visible_px": 14776,
+      "amodal_px": 16184,
+      "occlusion_rate": 0.087,
+      "bbox_xywh_amodal": [
+        1190,
+        467,
+        165,
+        212
+      ]
+    },
+    {
+      "instance_id": 20,
+      "class_name": "콜민A시럽_03",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0020.png",
+      "amodal_mask": "amodal_masks/0000_0020.png",
+      "occlusion_mask": "occlusion_masks/0000_0020.png",
+      "visible_px": 15264,
+      "amodal_px": 15264,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        784,
+        85,
+        134,
+        205
+      ]
+    },
+    {
+      "instance_id": 21,
+      "class_name": "콜민A시럽_04",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0021.png",
+      "amodal_mask": "amodal_masks/0000_0021.png",
+      "occlusion_mask": "occlusion_masks/0000_0021.png",
+      "visible_px": 16662,
+      "amodal_px": 16667,
+      "occlusion_rate": 0.0003,
+      "bbox_xywh_amodal": [
+        251,
+        609,
+        230,
+        133
+      ]
+    },
+    {
+      "instance_id": 22,
+      "class_name": "콜민A시럽_05",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0022.png",
+      "amodal_mask": "amodal_masks/0000_0022.png",
+      "occlusion_mask": "occlusion_masks/0000_0022.png",
+      "visible_px": 16006,
+      "amodal_px": 16437,
+      "occlusion_rate": 0.0262,
+      "bbox_xywh_amodal": [
+        1300,
+        547,
+        100,
+        219
+      ]
+    },
+    {
+      "instance_id": 23,
+      "class_name": "콜민A시럽_06",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0023.png",
+      "amodal_mask": "amodal_masks/0000_0023.png",
+      "occlusion_mask": "occlusion_masks/0000_0023.png",
+      "visible_px": 12651,
+      "amodal_px": 16063,
+      "occlusion_rate": 0.2124,
+      "bbox_xywh_amodal": [
+        1041,
+        610,
+        196,
+        189
+      ]
+    },
+    {
+      "instance_id": 24,
+      "class_name": "콜민A시럽_07",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0024.png",
+      "amodal_mask": "amodal_masks/0000_0024.png",
+      "occlusion_mask": "occlusion_masks/0000_0024.png",
+      "visible_px": 15935,
+      "amodal_px": 15935,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        776,
+        354,
+        149,
+        217
+      ]
+    },
+    {
+      "instance_id": 26,
+      "class_name": "파란뚜껑 약통_00",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0026.png",
+      "amodal_mask": "amodal_masks/0000_0026.png",
+      "occlusion_mask": "occlusion_masks/0000_0026.png",
+      "visible_px": 4523,
+      "amodal_px": 4524,
+      "occlusion_rate": 0.0002,
+      "bbox_xywh_amodal": [
+        802,
+        743,
+        96,
+        61
+      ]
+    },
+    {
+      "instance_id": 27,
+      "class_name": "파란뚜껑 약통_01",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0027.png",
+      "amodal_mask": "amodal_masks/0000_0027.png",
+      "occlusion_mask": "occlusion_masks/0000_0027.png",
+      "visible_px": 3706,
+      "amodal_px": 4504,
+      "occlusion_rate": 0.1772,
+      "bbox_xywh_amodal": [
+        1137,
+        474,
+        97,
+        56
+      ]
+    },
+    {
+      "instance_id": 28,
+      "class_name": "파란뚜껑 약통_02",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0028.png",
+      "amodal_mask": "amodal_masks/0000_0028.png",
+      "occlusion_mask": "occlusion_masks/0000_0028.png",
+      "visible_px": 4571,
+      "amodal_px": 4607,
+      "occlusion_rate": 0.0078,
+      "bbox_xywh_amodal": [
+        741,
+        333,
+        100,
+        88
+      ]
+    },
+    {
+      "instance_id": 29,
+      "class_name": "파란뚜껑 약통_03",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0029.png",
+      "amodal_mask": "amodal_masks/0000_0029.png",
+      "occlusion_mask": "occlusion_masks/0000_0029.png",
+      "visible_px": 4448,
+      "amodal_px": 4453,
+      "occlusion_rate": 0.0011,
+      "bbox_xywh_amodal": [
+        895,
+        727,
+        99,
+        75
+      ]
+    },
+    {
+      "instance_id": 30,
+      "class_name": "파란뚜껑 약통_04",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0030.png",
+      "amodal_mask": "amodal_masks/0000_0030.png",
+      "occlusion_mask": "occlusion_masks/0000_0030.png",
+      "visible_px": 2952,
+      "amodal_px": 4472,
+      "occlusion_rate": 0.3399,
+      "bbox_xywh_amodal": [
+        655,
+        399,
+        90,
+        98
+      ]
+    },
+    {
+      "instance_id": 31,
+      "class_name": "파란뚜껑 약통_05",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0031.png",
+      "amodal_mask": "amodal_masks/0000_0031.png",
+      "occlusion_mask": "occlusion_masks/0000_0031.png",
+      "visible_px": 3588,
+      "amodal_px": 4638,
+      "occlusion_rate": 0.2264,
+      "bbox_xywh_amodal": [
+        626,
+        495,
+        101,
+        68
+      ]
+    },
+    {
+      "instance_id": 32,
+      "class_name": "파란뚜껑 약통_06",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0032.png",
+      "amodal_mask": "amodal_masks/0000_0032.png",
+      "occlusion_mask": "occlusion_masks/0000_0032.png",
+      "visible_px": 4410,
+      "amodal_px": 4450,
+      "occlusion_rate": 0.009,
+      "bbox_xywh_amodal": [
+        978,
+        338,
+        87,
+        99
+      ]
+    },
+    {
+      "instance_id": 35,
+      "class_name": "하얀 약통_00",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0035.png",
+      "amodal_mask": "amodal_masks/0000_0035.png",
+      "occlusion_mask": "occlusion_masks/0000_0035.png",
+      "visible_px": 5502,
+      "amodal_px": 5989,
+      "occlusion_rate": 0.0813,
+      "bbox_xywh_amodal": [
+        1246,
+        310,
+        104,
+        66
+      ]
+    },
+    {
+      "instance_id": 36,
+      "class_name": "하얀 약통_01",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0036.png",
+      "amodal_mask": "amodal_masks/0000_0036.png",
+      "occlusion_mask": "occlusion_masks/0000_0036.png",
+      "visible_px": 4469,
+      "amodal_px": 6148,
+      "occlusion_rate": 0.2731,
+      "bbox_xywh_amodal": [
+        1231,
+        731,
+        107,
+        72
+      ]
+    },
+    {
+      "instance_id": 37,
+      "class_name": "하얀 약통_02",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0037.png",
+      "amodal_mask": "amodal_masks/0000_0037.png",
+      "occlusion_mask": "occlusion_masks/0000_0037.png",
+      "visible_px": 5645,
+      "amodal_px": 5840,
+      "occlusion_rate": 0.0334,
+      "bbox_xywh_amodal": [
+        622,
+        560,
+        101,
+        102
+      ]
+    },
+    {
+      "instance_id": 38,
+      "class_name": "하얀 약통_03",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0038.png",
+      "amodal_mask": "amodal_masks/0000_0038.png",
+      "occlusion_mask": "occlusion_masks/0000_0038.png",
+      "visible_px": 2450,
+      "amodal_px": 5592,
+      "occlusion_rate": 0.5619,
+      "bbox_xywh_amodal": [
+        1092,
+        523,
+        91,
+        104
+      ]
+    },
+    {
+      "instance_id": 39,
+      "class_name": "하얀 약통_04",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0039.png",
+      "amodal_mask": "amodal_masks/0000_0039.png",
+      "occlusion_mask": "occlusion_masks/0000_0039.png",
+      "visible_px": 5853,
+      "amodal_px": 5884,
+      "occlusion_rate": 0.0053,
+      "bbox_xywh_amodal": [
+        724,
+        698,
+        83,
+        104
+      ]
+    },
+    {
+      "instance_id": 40,
+      "class_name": "하얀 약통_05",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0040.png",
+      "amodal_mask": "amodal_masks/0000_0040.png",
+      "occlusion_mask": "occlusion_masks/0000_0040.png",
+      "visible_px": 5809,
+      "amodal_px": 5822,
+      "occlusion_rate": 0.0022,
+      "bbox_xywh_amodal": [
+        1159,
+        409,
+        100,
+        65
+      ]
+    },
+    {
+      "instance_id": 41,
+      "class_name": "하얀 약통_06",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0041.png",
+      "amodal_mask": "amodal_masks/0000_0041.png",
+      "occlusion_mask": "occlusion_masks/0000_0041.png",
+      "visible_px": 5479,
+      "amodal_px": 5931,
+      "occlusion_rate": 0.0762,
+      "bbox_xywh_amodal": [
+        630,
+        706,
+        106,
+        81
+      ]
+    },
+    {
+      "instance_id": 42,
+      "class_name": "하얀 약통_07",
+      "category_id": -1,
+      "visible_mask": "visible_masks/0000_0042.png",
+      "amodal_mask": "amodal_masks/0000_0042.png",
+      "occlusion_mask": "occlusion_masks/0000_0042.png",
+      "visible_px": 3985,
+      "amodal_px": 3985,
+      "occlusion_rate": 0.0,
+      "bbox_xywh_amodal": [
+        722,
+        426,
+        75,
+        69
+      ]
+    }
+  ]
+}
