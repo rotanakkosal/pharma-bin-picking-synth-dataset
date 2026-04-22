@@ -1,0 +1,7 @@
+.venv_synth/
+output/
+__pycache__/
+*.log
+*.pyc
+scripts/_tmp_meshes/
+sample_data/

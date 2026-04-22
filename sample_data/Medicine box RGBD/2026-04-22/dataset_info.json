@@ -1,0 +1,18 @@
+{
+  "name": "test",
+  "version": "1.0",
+  "description": "Custom BOP dataset for bin picking",
+  "structure": {
+    "scenes": "Scene captures from bin camera (objects in bin)",
+    "objects": "Object captures for 3D reconstruction",
+    "models": "3D models generated from object captures"
+  },
+  "indexing": {
+    "scene_id": "1-indexed (000001, 000002, ...)",
+    "object_id": "1-indexed (000001, 000002, ...)",
+    "image_id": "0-indexed (000000.png, 000001.png, ...)"
+  },
+  "camera_type": "Intel RealSense L515",
+  "depth_unit": "mm",
+  "creation_date": "2026-01-24"
+}

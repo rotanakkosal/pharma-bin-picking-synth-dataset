@@ -1,0 +1,51 @@
+meshes:
+  dir: "sample_data/Medicine box OBJ_260324/2026-04-22"
+  unit_scale: 0.001          # OBJ verts are in mm, Blender works in meters
+  copies_per_mesh: 8         # 4 meshes × 8 = 32 bottles per scene
+
+tray:
+  inner_w: 0.70              # m (x) — sized to fit camera FOV at 1.286 m height
+  inner_d: 0.45              # m (y)
+  wall_h: 0.12               # m (z) — taller than any bottle
+  wall_t: 0.010              # m
+  color: [0.55, 0.72, 0.90, 1.0]  # light blue like reference image
+
+ground:
+  size: 3.0                  # m (big plane under the tray so BG isn't black)
+  color: [0.85, 0.85, 0.85, 1.0]
+
+drop:
+  x_range: [-0.25, 0.25]
+  y_range: [-0.15, 0.15]
+  z_range: [0.30, 0.60]      # drop height above tray floor
+  min_sim_time: 3
+  max_sim_time: 6
+
+camera:
+  # Intel RealSense L515 intrinsics (from sample_data/camera.json)
+  fx: 1349.4442138671875
+  fy: 1350.024658203125
+  cx: 988.072021484375
+  cy: 559.8935546875
+  width: 1920
+  height: 1080
+  # Top-down pose (matches your real extrinsics: t_z ≈ 1286 mm)
+  height_m: 1.286
+  jitter_xy_m: 0.02          # small positional jitter per scene
+  jitter_rot_deg: 2.0        # small yaw/tilt jitter
+
+lighting:
+  n_lights: 3
+  energy_range: [40, 120]        # dimmer than before to avoid overexposure
+  height_range: [1.8, 2.5]
+  world_strength: 0.4            # ambient world light
+
+render:
+  samples: 64                # low for speed; bump to 256 for final quality
+  denoiser: "INTEL"
+  depth_unit_mm: true        # save depth as uint16 mm to match sample_data
+
+output:
+  dir: "output"
+  scenes: 1
+  seed: 42
