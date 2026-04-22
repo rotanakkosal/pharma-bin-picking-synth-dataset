@@ -1,5 +1,6 @@
 meshes:
   dir: "sample_data/Medicine box OBJ_260324/2026-04-22"
+  labels_dir: "textures/labels"
   unit_scale: 0.001          # OBJ verts are in mm, Blender works in meters
   copies_per_mesh: 8         # 4 meshes × 8 = 32 bottles per scene
 

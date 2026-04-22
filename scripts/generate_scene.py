@@ -30,6 +30,60 @@ def ensure_ascii_mesh_copies(src_dir: Path, tmp_dir: Path) -> list[tuple[str, Pa
     return pairs
 
 
+def load_label_pool(labels_dir: Path) -> list[Path]:
+    paths = sorted(labels_dir.glob("label_*.png"))
+    if not paths:
+        raise FileNotFoundError(
+            f"No labels found in {labels_dir}. "
+            f"Run `python scripts/gen_fake_labels.py --n 30` first."
+        )
+    return paths
+
+
+def smart_unwrap(mesh_obj):
+    """Run Blender's smart UV projection on a MeshObject (so an image
+    texture can wrap around the mesh). Works on cylindrical bottles."""
+    import bpy
+    bpy.context.view_layer.objects.active = mesh_obj.blender_obj
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.02)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+
+def make_label_material(name: str, label_path: Path, body_tint, rng: random.Random):
+    """Create a Principled BSDF material with the label PNG as Base Color,
+    multiplied by a slight body-color tint so the 'white' parts of the label
+    take on the bottle body color."""
+    import bpy
+    mat = bproc.material.create(name)
+    nodes = mat.blender_obj.node_tree.nodes
+    links = mat.blender_obj.node_tree.links
+
+    bsdf = nodes.get("Principled BSDF")
+
+    img = bpy.data.images.load(str(label_path))
+    img_node = nodes.new("ShaderNodeTexImage")
+    img_node.image = img
+    img_node.location = (-600, 0)
+
+    # Multiply the label image by a body tint (so the white background of the
+    # label becomes the bottle body color).
+    mix = nodes.new("ShaderNodeMixRGB")
+    mix.blend_type = "MULTIPLY"
+    mix.inputs["Fac"].default_value = 1.0
+    mix.inputs["Color2"].default_value = [*body_tint, 1.0]
+    mix.location = (-300, 0)
+    links.new(img_node.outputs["Color"], mix.inputs["Color1"])
+    links.new(mix.outputs["Color"], bsdf.inputs["Base Color"])
+
+    # Plastic-like surface properties
+    mat.set_principled_shader_value("Roughness", rng.uniform(0.35, 0.55))
+    mat.set_principled_shader_value("Metallic", 0.0)
+    mat.set_principled_shader_value("Alpha", 1.0)
+    return mat
+
+
 def build_tray(cfg: dict) -> list:
     w, d, h, t = cfg["inner_w"], cfg["inner_d"], cfg["wall_h"], cfg["wall_t"]
     color = cfg["color"]
@@ -81,10 +135,19 @@ def _wall(scale_xyz, location_xyz):
     return w
 
 
-def load_and_drop_bottles(mesh_pairs, cfg, rng: random.Random):
+def load_and_drop_bottles(mesh_pairs, cfg, label_pool: list[Path], rng: random.Random):
     bottle_cfg = cfg["meshes"]
     drop_cfg = cfg["drop"]
     s = bottle_cfg["unit_scale"]
+
+    # Real Korean pharma bottles are white opaque HDPE — body is white with
+    # only tiny variation. Color comes from the LABEL, not the body.
+    body_palette = [
+        (0.96, 0.96, 0.95),
+        (0.95, 0.95, 0.94),
+        (0.97, 0.97, 0.96),
+        (0.94, 0.94, 0.93),
+    ]
 
     placed = []
     for class_id, (label, mesh_path) in enumerate(mesh_pairs, start=1):
@@ -97,16 +160,14 @@ def load_and_drop_bottles(mesh_pairs, cfg, rng: random.Random):
         template.set_scale([s, s, s])
         template.set_name(f"{label}_template")
 
-        # Assign a random opaque plastic-like material per class
-        mat = bproc.material.create(f"mat_{label}")
-        mat.set_principled_shader_value(
-            "Base Color",
-            [rng.uniform(0.4, 0.95), rng.uniform(0.4, 0.95), rng.uniform(0.4, 0.95), 1.0],
-        )
-        mat.set_principled_shader_value("Roughness", rng.uniform(0.35, 0.7))
-        mat.set_principled_shader_value("Metallic", 0.0)
-        mat.set_principled_shader_value("Transmission Weight", 0.0)
-        mat.set_principled_shader_value("Alpha", 1.0)
+        # Unwrap so the label wraps around the mesh surface.
+        smart_unwrap(template)
+
+        # One label material per class (bottles of the same class share a label,
+        # like a real product line)
+        label_path = rng.choice(label_pool)
+        body_tint = rng.choice(body_palette)
+        mat = make_label_material(f"mat_{label}", label_path, body_tint, rng)
         template.replace_materials(mat)
 
         # Move template far away; we'll duplicate instances for the actual scene
@@ -321,8 +382,11 @@ def main():
     build_ground(cfg["ground"])
     build_tray(cfg["tray"])
 
-    # 3. load bottles + physics-drop
-    placed = load_and_drop_bottles(mesh_pairs, cfg, rng)
+    # 3. load label textures + bottles, physics-drop
+    labels_dir = (repo_root / cfg["meshes"].get("labels_dir", "textures/labels")).resolve()
+    label_pool = load_label_pool(labels_dir)
+    print(f"[info] loaded {len(label_pool)} label textures from {labels_dir}")
+    placed = load_and_drop_bottles(mesh_pairs, cfg, label_pool, rng)
     print(f"[info] placed {len(placed)} bottle instances")
 
     # 4. simulate physics
