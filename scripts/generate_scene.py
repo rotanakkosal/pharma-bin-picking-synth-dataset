@@ -40,15 +40,88 @@ def load_label_pool(labels_dir: Path) -> list[Path]:
     return paths
 
 
-def smart_unwrap(mesh_obj):
-    """Run Blender's smart UV projection on a MeshObject (so an image
-    texture can wrap around the mesh). Works on cylindrical bottles."""
+def bake_y_to_z_rotation(mesh_obj):
+    """Bake a +90° rotation around X so a Y-up OBJ becomes Z-up. Required
+    regardless of UV strategy because rigidbody physics expects bottles to
+    stand on +Z."""
     import bpy
-    bpy.context.view_layer.objects.active = mesh_obj.blender_obj
+    obj = mesh_obj.blender_obj
+    bpy.context.view_layer.objects.active = obj
+    obj.rotation_euler = (math.pi / 2, 0, 0)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+
+
+def smart_unwrap(mesh_obj):
+    """Cylinder-project UVs so the label wraps once around the bottle's
+    long axis as one continuous piece. Used for procedural-label path
+    where the OBJ has no UVs. Bakes Y→Z first."""
+    import bpy
+    bake_y_to_z_rotation(mesh_obj)
+    obj = mesh_obj.blender_obj
+    bpy.context.view_layer.objects.active = obj
     bpy.ops.object.mode_set(mode="EDIT")
     bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.02)
+    bpy.ops.uv.cylinder_project(
+        direction="ALIGN_TO_OBJECT",
+        align="POLAR_ZX",
+        scale_to_bounds=True,
+    )
     bpy.ops.object.mode_set(mode="OBJECT")
+
+
+def stage_textured_mesh(label: str, src_obj: Path, src_tex: Path, tmp_dir: Path, idx: int) -> Path:
+    """Copy a textured OBJ + its MTL + label texture into tmp_dir using
+    ASCII-only filenames. Rewrites mtllib (in OBJ) and map_Kd (in MTL)
+    so cross-references resolve regardless of source naming.
+
+    Returns the path to the staged OBJ.
+    """
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    tag = f"tex_{idx:02d}"
+    dst_obj = tmp_dir / f"{tag}.obj"
+    dst_mtl = tmp_dir / f"{tag}.mtl"
+    dst_tex = tmp_dir / f"{tag}.png"
+
+    shutil.copy(src_tex, dst_tex)
+
+    src_mtl_name = None
+    obj_out_lines = []
+    for line in src_obj.read_text().splitlines():
+        if line.strip().startswith("mtllib"):
+            src_mtl_name = line.split(maxsplit=1)[1].strip()
+            obj_out_lines.append(f"mtllib {dst_mtl.name}")
+        else:
+            obj_out_lines.append(line)
+    dst_obj.write_text("\n".join(obj_out_lines) + "\n")
+
+    src_mtl = None
+    if src_mtl_name:
+        candidate = src_obj.parent / src_mtl_name
+        if candidate.exists():
+            src_mtl = candidate
+    if src_mtl is None:
+        # Fallback: pick the first .mtl file in the source dir (handles the
+        # L/ case where the OBJ was renamed but its mtllib line still points
+        # at the original Korean filename).
+        mtl_files = sorted(src_obj.parent.glob("*.mtl"))
+        if mtl_files:
+            src_mtl = mtl_files[0]
+            print(f"[info] textured mesh {label}: mtllib '{src_mtl_name}' missing; "
+                  f"using {src_mtl.name} from same dir")
+
+    if src_mtl is not None:
+        mtl_out_lines = []
+        for line in src_mtl.read_text().splitlines():
+            if line.strip().startswith("map_Kd"):
+                mtl_out_lines.append(f"map_Kd {dst_tex.name}")
+            else:
+                mtl_out_lines.append(line)
+        dst_mtl.write_text("\n".join(mtl_out_lines) + "\n")
+    else:
+        print(f"[warn] textured mesh {label}: no .mtl found in {src_obj.parent}; "
+              f"texture will not load")
+
+    return dst_obj
 
 
 def make_label_material(name: str, label_path: Path, body_tint, rng: random.Random):
@@ -135,7 +208,8 @@ def _wall(scale_xyz, location_xyz):
     return w
 
 
-def load_and_drop_bottles(mesh_pairs, cfg, label_pool: list[Path], rng: random.Random):
+def load_and_drop_bottles(mesh_pairs, cfg, label_pool: list[Path], rng: random.Random,
+                          repo_root: Path, tmp_dir: Path):
     bottle_cfg = cfg["meshes"]
     drop_cfg = cfg["drop"]
     s = bottle_cfg["unit_scale"]
@@ -149,9 +223,24 @@ def load_and_drop_bottles(mesh_pairs, cfg, label_pool: list[Path], rng: random.R
         (0.94, 0.94, 0.93),
     ]
 
+    textured_cfg = bottle_cfg.get("textured") or {}
+    textured_base = textured_cfg.get("base_dir")
+    textured_bottles = textured_cfg.get("bottles") or {}
+    textured_base_path = (repo_root / textured_base).resolve() if textured_base else None
+
     placed = []
-    for class_id, (label, mesh_path) in enumerate(mesh_pairs, start=1):
-        # Load once, then duplicate
+    for class_id, (label, original_mesh_path) in enumerate(mesh_pairs, start=1):
+        textured_entry = textured_bottles.get(label)
+        is_textured = textured_entry is not None and textured_base_path is not None
+
+        if is_textured:
+            src_obj = textured_base_path / textured_entry["obj"]
+            src_tex = textured_base_path / textured_entry["label_texture"]
+            mesh_path = stage_textured_mesh(label, src_obj, src_tex, tmp_dir, class_id)
+            print(f"[info] {label}: using textured OBJ {src_obj.name}")
+        else:
+            mesh_path = original_mesh_path
+
         loaded = bproc.loader.load_obj(str(mesh_path))
         if not loaded:
             print(f"[warn] failed to load {mesh_path}")
@@ -160,15 +249,23 @@ def load_and_drop_bottles(mesh_pairs, cfg, label_pool: list[Path], rng: random.R
         template.set_scale([s, s, s])
         template.set_name(f"{label}_template")
 
-        # Unwrap so the label wraps around the mesh surface.
-        smart_unwrap(template)
-
-        # One label material per class (bottles of the same class share a label,
-        # like a real product line)
-        label_path = rng.choice(label_pool)
-        body_tint = rng.choice(body_palette)
-        mat = make_label_material(f"mat_{label}", label_path, body_tint, rng)
-        template.replace_materials(mat)
+        if is_textured:
+            # OBJ already has UVs; only need the Y→Z rotation bake for physics.
+            # Materials (Material_Bottle plain HDPE + Material_Label with texture)
+            # come from the MTL via blenderproc's OBJ loader.
+            bake_y_to_z_rotation(template)
+        else:
+            smart_unwrap(template)
+            body_tint = rng.choice(body_palette)
+            if bottle_cfg.get("use_labels", True):
+                label_path = rng.choice(label_pool)
+                mat = make_label_material(f"mat_{label}", label_path, body_tint, rng)
+            else:
+                mat = bproc.material.create(f"mat_{label}_plain")
+                mat.set_principled_shader_value("Base Color", [*body_tint, 1.0])
+                mat.set_principled_shader_value("Roughness", rng.uniform(0.35, 0.55))
+                mat.set_principled_shader_value("Metallic", 0.0)
+            template.replace_materials(mat)
 
         # Move template far away; we'll duplicate instances for the actual scene
         template.set_location([10, 10, 10])
@@ -386,7 +483,7 @@ def main():
     labels_dir = (repo_root / cfg["meshes"].get("labels_dir", "textures/labels")).resolve()
     label_pool = load_label_pool(labels_dir)
     print(f"[info] loaded {len(label_pool)} label textures from {labels_dir}")
-    placed = load_and_drop_bottles(mesh_pairs, cfg, label_pool, rng)
+    placed = load_and_drop_bottles(mesh_pairs, cfg, label_pool, rng, repo_root, mesh_tmp)
     print(f"[info] placed {len(placed)} bottle instances")
 
     # 4. simulate physics
