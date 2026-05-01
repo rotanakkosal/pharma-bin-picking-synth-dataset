@@ -31,7 +31,7 @@ def ensure_ascii_mesh_copies(src_dir: Path, tmp_dir: Path) -> list[tuple[str, Pa
 
 
 def load_label_pool(labels_dir: Path) -> list[Path]:
-    paths = sorted(labels_dir.glob("label_*.png"))
+    paths = sorted(p for p in labels_dir.glob("label_*.png") if "fullcolor" not in p.name)
     if not paths:
         raise FileNotFoundError(
             f"No labels found in {labels_dir}. "
@@ -281,9 +281,12 @@ def load_and_drop_bottles(mesh_pairs, cfg, label_pool: list[Path], rng: random.R
                 rng.uniform(*drop_cfg["y_range"]),
                 rng.uniform(*drop_cfg["z_range"]),
             ])
+            # Spawn lying on side (X ~ 90°) with small wobble + random spin around
+            # the long axis. After physics settles, most bottles stay horizontal
+            # so their cylinder labels are visible from the top-down camera.
             dup.set_rotation_euler([
-                rng.uniform(0, 2 * math.pi),
-                rng.uniform(0, 2 * math.pi),
+                math.pi / 2 + rng.uniform(-0.3, 0.3),
+                rng.uniform(-0.2, 0.2),
                 rng.uniform(0, 2 * math.pi),
             ])
             dup.enable_rigidbody(active=True, mass=0.1, friction=0.8, linear_damping=0.1)
@@ -396,7 +399,11 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
     instances = []
     for entry in attrs:
         inst_id = entry["idx"]
+        # `name` is the per-instance Blender object name ("레보진시럽_02"); used
+        # only as the lookup key into amodal_masks. `class_name` (from cp_class_name)
+        # is the clean per-class label exposed to consumers of scene_gt.json.
         name = entry.get("name", f"inst_{inst_id}")
+        class_name = entry.get("class_name") or name
         cat_id = entry.get("category_id", -1)
         if cat_id == 0:
             continue  # tray / ground
@@ -423,7 +430,7 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
 
         instances.append({
             "instance_id": int(inst_id),
-            "class_name": name,
+            "class_name": class_name,
             "category_id": int(cat_id),
             "visible_mask": f"visible_masks/{fname}",
             "amodal_mask": f"amodal_masks/{fname}",
@@ -502,8 +509,13 @@ def main():
     bproc.renderer.enable_depth_output(activate_antialiasing=False)
     data = bproc.renderer.render()
 
-    # Full-scene visible instance segmap
-    seg_full = bproc.renderer.render_segmap(map_by=["instance", "name", "category_id"], default_values={"category_id": -1, "name": ""})
+    # Full-scene visible instance segmap. Use the cp_ prefix so BlenderProc
+    # actually reads our custom properties (set via set_cp); without the prefix
+    # it falls back to default_values and every instance gets category_id=-1.
+    seg_full = bproc.renderer.render_segmap(
+        map_by=["instance", "name", "cp_category_id", "cp_class_name"],
+        default_values={"category_id": -1, "class_name": ""},
+    )
     data["instance_segmaps"] = seg_full["instance_segmaps"]
     data["instance_attribute_maps"] = seg_full["instance_attribute_maps"]
 

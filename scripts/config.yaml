@@ -3,7 +3,7 @@ meshes:
   labels_dir: "textures/labels"
   use_labels: true           # procedural labels for non-textured bottles (fallback)
   unit_scale: 0.001          # OBJ verts are in mm, Blender works in meters
-  copies_per_mesh: 8         # 4 meshes × 8 = 32 bottles per scene
+  copies_per_mesh: 12        # 4 meshes × 12 = 48 bottles per scene — denser pile, more occlusion variety
   # Per-class textured-mesh overrides. If a class name (mesh stem) is listed
   # here, the supplied UV-mapped OBJ + photoreal label texture replace the
   # original OBJ + procedural label. Other classes fall back to the
@@ -22,7 +22,7 @@ meshes:
 tray:
   inner_w: 0.70              # m (x) — sized to fit camera FOV at 1.286 m height
   inner_d: 0.45              # m (y)
-  wall_h: 0.12               # m (z) — taller than any bottle
+  wall_h: 0.20               # m (z) — tall enough to contain bouncing bottles, not just static ones
   wall_t: 0.010              # m
   color: [0.55, 0.72, 0.90, 1.0]  # light blue like reference image
 
@@ -31,9 +31,9 @@ ground:
   color: [0.85, 0.85, 0.85, 1.0]
 
 drop:
-  x_range: [-0.25, 0.25]
-  y_range: [-0.15, 0.15]
-  z_range: [0.30, 0.60]      # drop height above tray floor
+  x_range: [-0.22, 0.22]     # 3cm margin: enough to prevent escapees, wide enough to spread bottles
+  y_range: [-0.12, 0.12]     # 3cm margin
+  z_range: [0.30, 0.50]      # restore drop height so bottles separate in flight before piling up
   min_sim_time: 3
   max_sim_time: 6
 

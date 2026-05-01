@@ -42,10 +42,11 @@ def check_scene(scene_dir: Path, gt: dict, depth_range_mm: tuple[int, int]) -> d
     r["n_instances"] = len(gt["instances"])
     r["category_id_minus1"] = sum(1 for i in gt["instances"] if i.get("category_id", -1) == -1)
 
-    # Depth
+    # Depth — PIL reads 16-bit PNG as int32 in "I" mode on some versions, even
+    # though we save it as uint16. Both are fine; values are mm regardless.
     depth_path = scene_dir / gt["depth"]
     depth = np.asarray(Image.open(depth_path))
-    assert depth.dtype == np.uint16, f"depth expected uint16 got {depth.dtype}"
+    assert depth.dtype in (np.uint16, np.int32), f"depth dtype {depth.dtype}, expected uint16/int32"
     r["depth_median_mm_all"] = int(np.median(depth[depth > 0])) if (depth > 0).any() else 0
 
     occlusion_rates = []
