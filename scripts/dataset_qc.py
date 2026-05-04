@@ -86,6 +86,58 @@ def check_scene(scene_dir: Path, gt: dict, depth_range_mm: tuple[int, int]) -> d
 
     r["_occlusion_rates"] = occlusion_rates  # will be popped before printing
     r["_class_names"] = [i["class_name"] for i in gt["instances"]]
+
+    # --- Suction-point GT checks (added 2026-05-04, V1) -----------------------
+    suction_meta = gt.get("suction_meta")
+    if suction_meta is None:
+        r["suction_meta_missing"] = 1
+    else:
+        for need in ("version", "cup_radius_mm", "mu_default", "tau_seal", "tau_wrench"):
+            if need not in suction_meta:
+                r["suction_meta_field_missing"] += 1
+
+    s_combined_all: list[float] = []
+    sseal_all: list[float] = []
+    swrench_all: list[float] = []
+    n_with_points = 0
+
+    for inst in gt["instances"]:
+        sp = inst.get("suction_points")
+        if sp is None:
+            r["suction_points_field_missing"] += 1
+            continue
+        if len(sp) > 0:
+            n_with_points += 1
+
+        # Sortedness: descending S_combined_default
+        prev = float("inf")
+        for p in sp:
+            cur = p["S_combined_default"]
+            if cur > prev + 1e-6:
+                r["suction_points_unsorted"] += 1
+                break
+            prev = cur
+
+        for p in sp:
+            for k in ("Sseal", "Swrench_default", "S_combined_default"):
+                if not (0.0 <= p[k] <= 1.0):
+                    r["suction_score_out_of_range"] += 1
+            if p["lateral_force_N"] < 0 or p["normal_force_N"] < 0:
+                r["suction_negative_force"] += 1
+            if p["torque_arm_mm"] < 0:
+                r["suction_negative_torque_arm"] += 1
+            n = p["normal_cam"]
+            if abs(n[0] ** 2 + n[1] ** 2 + n[2] ** 2 - 1.0) > 1e-3:
+                r["suction_normal_not_unit"] += 1
+            sseal_all.append(p["Sseal"])
+            swrench_all.append(p["Swrench_default"])
+            s_combined_all.append(p["S_combined_default"])
+
+    r["_suction_n_total"] = len(s_combined_all)
+    r["_suction_n_with_points"] = n_with_points
+    r["_suction_sseal"] = sseal_all
+    r["_suction_swrench"] = swrench_all
+    r["_suction_combined"] = s_combined_all
     return r
 
 
@@ -136,6 +188,10 @@ def main():
         all_occlusion_rates.extend(r.pop("_occlusion_rates"))
         all_class_names.extend(r.pop("_class_names"))
         for k, v in r.items():
+            # Underscore-prefixed keys carry per-scene non-int payloads
+            # (lists, etc.) that aggregate later. Skip them here.
+            if k.startswith("_") or not isinstance(v, int):
+                continue
             totals[k] += v
 
     n_scenes = len(scene_reports)
@@ -172,9 +228,35 @@ def main():
     for cls, n in cls_counts.most_common():
         print(f"    {cls:<20} {n}")
     print()
+    # --- Suction-point GT report (added 2026-05-04) ---
+    print("--- Suction-point GT (V1) ---")
+    suction_int_keys = (
+        "suction_meta_missing", "suction_meta_field_missing",
+        "suction_points_field_missing", "suction_points_unsorted",
+        "suction_score_out_of_range", "suction_negative_force",
+        "suction_negative_torque_arm", "suction_normal_not_unit",
+    )
+    print("  integrity (want all zeros):")
+    for k in suction_int_keys:
+        print(f"    {k:<34} {totals[k]}")
+
+    suction_total = sum(r.get("_suction_n_total", 0) for r in scene_reports)
+    suction_with_points = sum(r.get("_suction_n_with_points", 0) for r in scene_reports)
+    print(f"  total suction points       : {suction_total}")
+    print(f"  instances with ≥1 point    : {suction_with_points}/{n_inst}")
+
+    sseal_pool = [v for r in scene_reports for v in r.get("_suction_sseal", [])]
+    swr_pool   = [v for r in scene_reports for v in r.get("_suction_swrench", [])]
+    sc_pool    = [v for r in scene_reports for v in r.get("_suction_combined", [])]
+    if sc_pool:
+        print(f"  Sseal              : min={min(sseal_pool):.3f} mean={np.mean(sseal_pool):.3f} max={max(sseal_pool):.3f}")
+        print(f"  Swrench (μ=default): min={min(swr_pool):.3f} mean={np.mean(swr_pool):.3f} max={max(swr_pool):.3f}")
+        print(f"  S_combined         : min={min(sc_pool):.3f} mean={np.mean(sc_pool):.3f} max={max(sc_pool):.3f}")
+    print()
+
     print("--- Known limitations (not checked) ---")
     print("  - 3D bottle pose not exported → pose-variety coverage untestable")
-    print("  - suction-point GT not exported → benchmark not yet usable")
+    print("  - suction GT physical correctness not validated against real grasps (V3 future)")
     print("  - rendering realism (FID vs real L515 captures) not measured here")
 
 

@@ -6,7 +6,11 @@ import json
 import math
 import random
 import shutil
+import sys
 from pathlib import Path
+
+# Make sibling scripts importable when launched via `blenderproc run`.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import numpy as np
 import yaml
@@ -18,12 +22,13 @@ def load_cfg(path: Path) -> dict:
 
 
 def ensure_ascii_mesh_copies(src_dir: Path, tmp_dir: Path) -> list[tuple[str, Path]]:
-    """Blender's OBJ importer can stumble on non-ASCII filenames (Korean).
-    Copy to ascii names and keep the original name as the class label."""
+    """Walk the canonical bottle layout (sample_data/bottles/<id>/mesh.obj),
+    copy to ascii-named mesh_NN.obj in tmp_dir for Blender, and return
+    (id, copied_path) pairs. The id (parent folder name) is the class label."""
     tmp_dir.mkdir(parents=True, exist_ok=True)
     pairs = []
-    for i, obj_path in enumerate(sorted(src_dir.glob("*.obj"))):
-        label = obj_path.stem
+    for i, obj_path in enumerate(sorted(src_dir.glob("*/mesh.obj"))):
+        label = obj_path.parent.name
         dst = tmp_dir / f"mesh_{i:02d}.obj"
         shutil.copy(obj_path, dst)
         pairs.append((label, dst))
@@ -223,15 +228,16 @@ def load_and_drop_bottles(mesh_pairs, cfg, label_pool: list[Path], rng: random.R
         (0.94, 0.94, 0.93),
     ]
 
+    # Textured-override paths are now relative to meshes.dir (the bottle root),
+    # since each bottle's photoreal mesh lives in its own per-id folder.
     textured_cfg = bottle_cfg.get("textured") or {}
-    textured_base = textured_cfg.get("base_dir")
     textured_bottles = textured_cfg.get("bottles") or {}
-    textured_base_path = (repo_root / textured_base).resolve() if textured_base else None
+    textured_base_path = (repo_root / bottle_cfg["dir"]).resolve()
 
     placed = []
     for class_id, (label, original_mesh_path) in enumerate(mesh_pairs, start=1):
         textured_entry = textured_bottles.get(label)
-        is_textured = textured_entry is not None and textured_base_path is not None
+        is_textured = textured_entry is not None
 
         if is_textured:
             src_obj = textured_base_path / textured_entry["obj"]
@@ -382,6 +388,7 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
     (scene_dir / "occlusion_masks").mkdir(exist_ok=True)
 
     from PIL import Image
+    from suction_gt import compute_suction_gt, make_suction_meta
 
     # --- RGB
     rgb = data["colors"][0]
@@ -441,6 +448,31 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
             "bbox_xywh_amodal": bbox,
         })
 
+    # --- Suction-point GT (V1 stub for wiring verification)
+    camera_K_np = np.array([
+        [cfg["camera"]["fx"], 0, cfg["camera"]["cx"]],
+        [0, cfg["camera"]["fy"], cfg["camera"]["cy"]],
+        [0, 0, 1],
+    ], dtype=np.float64)
+    visible_masks_for_gt = {}
+    for inst in instances:
+        inst_id = inst["instance_id"]
+        visible_masks_for_gt[inst_id] = (seg == inst_id).astype(np.uint8) * 255
+
+    import time as _time
+    _t0 = _time.perf_counter()
+    suction_per_instance = compute_suction_gt(
+        placed_bottles=placed,
+        visible_masks=visible_masks_for_gt,
+        depth_m=depth_m,
+        camera_K=camera_K_np,
+    )
+    print(f"[time] compute_suction_gt: {_time.perf_counter() - _t0:.2f}s "
+          f"({sum(len(v) for v in suction_per_instance.values())} points across "
+          f"{len(suction_per_instance)} instances)")
+    for inst in instances:
+        inst["suction_points"] = suction_per_instance.get(inst["instance_id"], [])
+
     # --- scene_gt.json
     meta = {
         "image_id": 0,
@@ -454,6 +486,7 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
             [0, cfg["camera"]["fy"], cfg["camera"]["cy"]],
             [0, 0, 1],
         ],
+        "suction_meta": make_suction_meta(),
         "instances": instances,
     }
     with open(scene_dir / "scene_gt.json", "w", encoding="utf-8") as f:

@@ -1,23 +1,20 @@
 meshes:
-  dir: "sample_data/Medicine box OBJ_260324/2026-04-22"
+  dir: "sample_data/bottles"        # canonical layout — one ASCII-named folder per bottle id
   labels_dir: "textures/labels"
-  use_labels: true           # procedural labels for non-textured bottles (fallback)
-  unit_scale: 0.001          # OBJ verts are in mm, Blender works in meters
-  copies_per_mesh: 7         # 7 meshes × 7 = 49 bottles per scene — denser pile, more occlusion variety
-  # Per-class textured-mesh overrides. If a class name (mesh stem) is listed
-  # here, the supplied UV-mapped OBJ + photoreal label texture replace the
-  # original OBJ + procedural label. Other classes fall back to the
-  # procedural path above. ASCII-staging of OBJ/MTL/texture handled by
-  # stage_textured_mesh() at render time.
+  use_labels: true                  # procedural labels for non-textured bottles (fallback)
+  unit_scale: 0.001                 # OBJ verts are in mm, Blender works in meters
+  copies_per_mesh: 7                # 7 meshes × 7 = 49 bottles per scene
+  # Per-id textured-mesh overrides. If an id is listed here, the UV-mapped
+  # OBJ + photoreal label texture replace the plain mesh.obj + procedural
+  # label. Paths are relative to meshes.dir.
   textured:
-    base_dir: "sample_data/Phama Bottle 3D Object/2026-04-29"
     bottles:
-      "콜민A시럽":
-        obj: "ver7/콜민A시럽_UV_mapped.obj"
-        label_texture: "ver7/콜민A_texture.png"
-      "레보진시럽":
-        obj: "L/L_UV_mapped.obj"
-        label_texture: "L/L_texture.png"
+      kolmin_a_syrup:
+        obj: "kolmin_a_syrup/mesh_uv.obj"
+        label_texture: "kolmin_a_syrup/label.png"
+      levozin_syrup:
+        obj: "levozin_syrup/mesh_uv.obj"
+        label_texture: "levozin_syrup/label.png"
 
 tray:
   inner_w: 0.70              # m (x) — sized to fit camera FOV at 1.286 m height
