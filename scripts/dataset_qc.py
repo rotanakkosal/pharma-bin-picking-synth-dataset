@@ -240,14 +240,14 @@ def main():
     for k in suction_int_keys:
         print(f"    {k:<34} {totals[k]}")
 
-    suction_total = sum(r.get("_suction_n_total", 0) for r in scene_reports)
-    suction_with_points = sum(r.get("_suction_n_with_points", 0) for r in scene_reports)
+    suction_total = sum(r.get("_suction_n_total", 0) for _, r in scene_reports)
+    suction_with_points = sum(r.get("_suction_n_with_points", 0) for _, r in scene_reports)
     print(f"  total suction points       : {suction_total}")
     print(f"  instances with ≥1 point    : {suction_with_points}/{n_inst}")
 
-    sseal_pool = [v for r in scene_reports for v in r.get("_suction_sseal", [])]
-    swr_pool   = [v for r in scene_reports for v in r.get("_suction_swrench", [])]
-    sc_pool    = [v for r in scene_reports for v in r.get("_suction_combined", [])]
+    sseal_pool = [v for _, r in scene_reports for v in r.get("_suction_sseal", [])]
+    swr_pool   = [v for _, r in scene_reports for v in r.get("_suction_swrench", [])]
+    sc_pool    = [v for _, r in scene_reports for v in r.get("_suction_combined", [])]
     if sc_pool:
         print(f"  Sseal              : min={min(sseal_pool):.3f} mean={np.mean(sseal_pool):.3f} max={max(sseal_pool):.3f}")
         print(f"  Swrench (μ=default): min={min(swr_pool):.3f} mean={np.mean(swr_pool):.3f} max={max(swr_pool):.3f}")
