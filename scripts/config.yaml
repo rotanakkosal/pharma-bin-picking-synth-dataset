@@ -3,7 +3,7 @@ meshes:
   labels_dir: "textures/labels"
   use_labels: true           # procedural labels for non-textured bottles (fallback)
   unit_scale: 0.001          # OBJ verts are in mm, Blender works in meters
-  copies_per_mesh: 12        # 4 meshes × 12 = 48 bottles per scene — denser pile, more occlusion variety
+  copies_per_mesh: 7         # 7 meshes × 7 = 49 bottles per scene — denser pile, more occlusion variety
   # Per-class textured-mesh overrides. If a class name (mesh stem) is listed
   # here, the supplied UV-mapped OBJ + photoreal label texture replace the
   # original OBJ + procedural label. Other classes fall back to the

@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 scripts/_tmp_meshes/
 sample_data/
+synth_for_uoais/
