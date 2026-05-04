@@ -1,4 +1,4 @@
-# pharma-bin-picking-synth-dataset
+# Pharma Bin Picking Synth Dataset
 
 BlenderProc pipeline that generates cluttered bin-picking scenes (RGB + depth + visible / amodal / occlusion masks) from 3D-scanned Korean pharmaceutical bottles, for training [UOAIS-Net](https://github.com/gist-ailab/uoais).
 
