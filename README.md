@@ -35,8 +35,11 @@ output/scene_NNNNNN/
   "camera_K":     [[fx, 0, cx], [0, fy, cy], [0, 0, 1]],
 
   "suction_meta": {
-    "version":              "v1",
+    "version":              "v1.5",
     "cup_radius_mm":        15.0,
+    "r_safety_mm":          5.0,                         // V1.5: cup must be at least r+r_safety from mask boundary
+    "nms_dist_mm":          5.0,                         // V1.5: top-K spatially-diverse, min spacing
+    "plane_fit_dense":      true,                        // V1.5: plane fit on dense disc pixels, not sparse cloud
     "mu_default":           0.5,
     "mu_sweep":             [0.2, 0.4, 0.6, 0.8, 1.0, 1.2],
     "tau_seal":             0.5,
@@ -260,7 +263,8 @@ Per the four-layer benchmark validation framework ([docs/](docs/)):
 | Tag | State |
 |---|---|
 | `v0.1.0-no-textures` | End-to-end pipeline, 4 classes, procedural materials. Segmentation only. |
-| `v0.2-suction+pose` | 7 classes, 2 photoreal labels, suction-point GT V1, 6-DOF pose, escape fix. **Current.** |
+| `v0.2-suction+pose` | 7 classes, 2 photoreal labels, suction-point GT V1, 6-DOF pose, escape fix. |
+| `v0.2.5-suction-v1.5` | Suction GT upgraded: dense plane fit, margin-aware edge clearance, NMS top-K. **Current.** |
 
 ---
 

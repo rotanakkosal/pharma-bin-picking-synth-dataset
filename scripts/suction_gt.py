@@ -37,6 +37,10 @@ DEFAULTS = {
     "tau_wrench":              0.5,
     "match_tolerance_mm":      5.0,
     "g_accel":                 9.81,
+    # V1.5 (2026-05-06) additions — see docs/v1_5_implementation_plan.md
+    "r_safety_mm":             5.0,     # margin past cup radius from mask boundary
+    "nms_dist_mm":             5.0,     # min spacing between exported top-K points
+    "plane_fit_max_pixels":    1000,    # cap dense disc-pixel sampling for runtime
 }
 
 GRAVITY_CAM = np.array([0.0, 0.0, 1.0])    # camera +Z = world -Z (top-down)
@@ -169,6 +173,28 @@ def filter_edge_clearance(uv: np.ndarray, r_px: int, this_visible_mask: np.ndarr
     return bool(np.all(this_visible_mask[vs, us] > 0))
 
 
+def filter_edge_clearance_with_margin(uv: np.ndarray, eroded_mask: np.ndarray) -> bool:
+    """V1.5 F1: cup center at least (r_cup + r_safety) from any mask boundary.
+    `eroded_mask` is precomputed once per instance (cv2.erode by r_cup_px + r_safety_px).
+    See Frontiers bin-picking review on 'distance from cup center to surface center'."""
+    u, v = int(uv[0]), int(uv[1])
+    H, W = eroded_mask.shape
+    if not (0 <= u < W and 0 <= v < H):
+        return False
+    return bool(eroded_mask[v, u] > 0)
+
+
+def build_eroded_mask(visible_mask: np.ndarray, r_total_px: int) -> np.ndarray:
+    """Erode the visible mask by a circular kernel of radius r_total_px.
+    Imported lazily to keep numpy-only behaviour for offline tests."""
+    import cv2
+    if r_total_px < 1:
+        return visible_mask
+    diameter = 2 * r_total_px + 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (diameter, diameter))
+    return cv2.erode(visible_mask, kernel)
+
+
 def filter_collision_free(uv: np.ndarray, r_px: int, all_masks: dict, my_id: int) -> bool:
     """F4: cup disc does not overlap any OTHER instance's visible mask."""
     H, W = next(iter(all_masks.values())).shape
@@ -247,6 +273,71 @@ def compute_swrench_components(
     }
 
 
+def fit_plane_dense(uv: np.ndarray, r_px: int, depth_m: np.ndarray, K: np.ndarray,
+                    visible_mask: np.ndarray,
+                    max_pixels: int = DEFAULTS["plane_fit_max_pixels"],
+                    rng: Optional[np.random.Generator] = None
+                    ) -> tuple[np.ndarray, float, int]:
+    """V1.5 dense plane fit: sample every depth pixel within the cup-disc footprint
+    that ALSO lies inside the bottle's visible mask. Back-project to 3D camera frame
+    and fit a plane. Returns (normal, residual_rms_m, n_points_used).
+
+    See docs/v1_5_implementation_plan.md §"Change 1". Replaces the V1 sparse FPS-cloud
+    plane fit which couldn't detect cap-body discontinuities."""
+    H, W = depth_m.shape
+    vs, us = disc_pixels(uv, r_px, H, W)
+    if len(vs) == 0:
+        return np.array([0.0, 0.0, -1.0]), 1e9, 0
+    in_mask = visible_mask[vs, us] > 0
+    vs, us = vs[in_mask], us[in_mask]
+    if len(vs) < 3:
+        return np.array([0.0, 0.0, -1.0]), 1e9, len(vs)
+    z = depth_m[vs, us]
+    valid = z > 0.01
+    vs, us, z = vs[valid], us[valid], z[valid]
+    if len(vs) < 3:
+        return np.array([0.0, 0.0, -1.0]), 1e9, len(vs)
+    if len(vs) > max_pixels:
+        if rng is None:
+            rng = np.random.default_rng(0)
+        idx = rng.choice(len(vs), size=max_pixels, replace=False)
+        vs, us, z = vs[idx], us[idx], z[idx]
+    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+    pts = np.stack([
+        (us - cx) * z / fx,
+        (vs - cy) * z / fy,
+        z,
+    ], axis=-1)
+    normal, residual_rms = fit_plane(pts)
+    return normal, residual_rms, len(pts)
+
+
+def nms_top_k(candidates: list, nms_dist_mm: float, k: int) -> list:
+    """V1.5 non-maximum suppression on suction candidates.
+    Greedy: pick highest score, suppress all within nms_dist_mm. Repeat until k kept.
+
+    Citation: SuctionNet §V (NMS before evaluation), GraspNet evaluation page (translation-distance NMS).
+    Threshold matches our match_tolerance_mm so suppressed points would have all matched
+    the same predictions anyway."""
+    if not candidates:
+        return []
+    nms_dist_m = nms_dist_mm * 1e-3
+    sorted_cands = sorted(candidates, key=lambda d: d["S_combined_default"], reverse=True)
+    kept: list = []
+    kept_pts = np.zeros((0, 3), dtype=np.float64)
+    for c in sorted_cands:
+        if len(kept) >= k:
+            break
+        c_pos = np.array(c["point_3d_cam"])
+        if len(kept_pts) > 0:
+            dists = np.linalg.norm(kept_pts - c_pos, axis=1)
+            if np.any(dists < nms_dist_m):
+                continue
+        kept.append(c)
+        kept_pts = np.vstack([kept_pts, c_pos[None, :]])
+    return kept
+
+
 def compute_swrench(comps: dict, cup_radius_mm: float, mu: float) -> float:
     """Combine wrench components into Swrench score in [0, 1]."""
     F_lat_max = mu * comps["F_vacuum_N"]
@@ -270,11 +361,15 @@ def compute_suction_gt(
     top_k: int = DEFAULTS["top_k"],
     object_mass_kg: float = DEFAULTS["object_mass_kg"],
     mu: float = DEFAULTS["mu_default"],
+    r_safety_mm: float = DEFAULTS["r_safety_mm"],
+    nms_dist_mm: float = DEFAULTS["nms_dist_mm"],
     seed: int = 0,
 ) -> dict:
-    """Returns {instance_id: [point_dict, ...]} sorted by S_combined desc."""
+    """Returns {instance_id: [point_dict, ...]} sorted by S_combined desc.
+    V1.5 (2026-05-06): dense plane fit, margin-aware F1, NMS top-K."""
     H, W = depth_m.shape
     out = {}
+    rng = np.random.default_rng(seed)
 
     # Precompute COM (camera frame) per instance: image centroid + median depth.
     coms = {}
@@ -307,28 +402,37 @@ def compute_suction_gt(
             out[int(inst_id)] = []
             continue
 
-        # Build a KDTree-like distance lookup for plane fits (small N, brute force OK)
+        # V1.5: precompute eroded mask for margin-aware edge clearance.
+        # r_total_px is the typical cup-pixel-radius at the instance median depth
+        # plus the safety margin in pixels. We use one erosion per instance (median
+        # depth) rather than per-candidate (depth varies <5% across one bottle).
+        z_med_inst = float(np.median(depth_m[mask > 0]))
+        r_cup_px_typ = cup_pixel_radius(z_med_inst, camera_K, cup_radius_mm)
+        r_safety_px_typ = cup_pixel_radius(z_med_inst, camera_K, r_safety_mm)
+        eroded_mask = build_eroded_mask(mask, r_cup_px_typ + r_safety_px_typ)
+
         kept = []
         for i, (uv, p) in enumerate(zip(uv_cands, pts_cands)):
             r_px = cup_pixel_radius(p[2], camera_K, cup_radius_mm)
             if r_px < 1:
                 continue
 
-            # F1 — edge clearance
-            if not filter_edge_clearance(uv, r_px, mask):
+            # F1 (V1.5) — margin-aware edge clearance
+            if not filter_edge_clearance_with_margin(uv, eroded_mask):
                 continue
 
             # F4 — collision-free approach
             if not filter_collision_free(uv, r_px, visible_masks, inst_id):
                 continue
 
-            # Plane fit on neighbors within cup radius (3D)
-            cup_radius_m = cup_radius_mm * 1e-3
-            d3 = np.linalg.norm(pts_cands - p, axis=1)
-            neighbor_mask = d3 <= cup_radius_m
-            if neighbor_mask.sum() < 3:
+            # V1.5: dense plane fit on every depth pixel within the cup-disc
+            # footprint (replaces V1's sparse FPS-cloud fit which missed step
+            # discontinuities like cap-body junctions).
+            normal, residual_rms, n_pts = fit_plane_dense(
+                uv, r_px, depth_m, camera_K, mask, rng=rng
+            )
+            if n_pts < 3:
                 continue
-            normal, residual_rms = fit_plane(pts_cands[neighbor_mask])
 
             # F2 — normal alignment
             ok_n, normal_angle_deg = filter_normal_alignment(
@@ -365,8 +469,8 @@ def compute_suction_gt(
                 "tilt_deg":             round(comps["tilt_deg"], 2),
             })
 
-        kept.sort(key=lambda d: d["S_combined_default"], reverse=True)
-        out[int(inst_id)] = kept[:top_k]
+        # V1.5: NMS to enforce spatial diversity in the top-K export
+        out[int(inst_id)] = nms_top_k(kept, nms_dist_mm, top_k)
 
     return out
 
@@ -374,8 +478,11 @@ def compute_suction_gt(
 def make_suction_meta(cfg_overrides: Optional[dict] = None) -> dict:
     """Self-describing metadata block embedded in scene_gt.json."""
     meta = {
-        "version":              "v1",
+        "version":              "v1.5",
         "cup_radius_mm":        DEFAULTS["cup_radius_mm"],
+        "r_safety_mm":          DEFAULTS["r_safety_mm"],
+        "nms_dist_mm":          DEFAULTS["nms_dist_mm"],
+        "plane_fit_dense":      True,
         "mu_default":           DEFAULTS["mu_default"],
         "mu_sweep":             DEFAULTS["mu_sweep"],
         "tau_seal":             DEFAULTS["tau_seal"],
