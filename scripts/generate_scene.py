@@ -339,6 +339,73 @@ def setup_lights(lc: dict, rng: random.Random):
         light.set_energy(rng.uniform(*lc["energy_range"]))
 
 
+# Blender camera frame:  +X right,  +Y up,   -Z forward (into scene)
+# OpenCV camera frame:    +X right,  -Y down, +Z forward (into scene)
+# Suction GT exports points in OpenCV convention (back-projected from depth);
+# pose export must match. This 4x4 flips Y and Z to convert.
+T_BLENDER_TO_CV = np.diag([1.0, -1.0, -1.0, 1.0])
+
+
+def extract_pose_cam(bottle_obj) -> tuple[np.ndarray, np.ndarray]:
+    """Compose object→camera-frame transform from world-frame matrices.
+    See docs/pose_export_plan.md for conventions: R is 3x3 right-handed (det=+1),
+    t in meters, both in camera frame matching `point_3d_cam` units used by suction GT.
+
+    Two corrections applied:
+      1. T_obj_to_world bakes object scale (set_scale([s,s,s]) = unit_scale=0.001)
+         into its 3x3 block. We strip uniform scale by normalizing each column —
+         valid because all bottle scales are uniform.
+      2. Blender camera frame has +Z out-of-scene; OpenCV (and our suction GT)
+         has +Z into-scene. We apply T_BLENDER_TO_CV to align."""
+    import bpy
+    T_obj_to_world = np.array(bottle_obj.get_local2world_mat())
+    T_cam_to_world = np.array(bpy.context.scene.camera.matrix_world)
+    T_obj_to_cam_blender = np.linalg.inv(T_cam_to_world) @ T_obj_to_world
+    T_obj_to_cam = T_BLENDER_TO_CV @ T_obj_to_cam_blender
+    R_with_scale = T_obj_to_cam[:3, :3]
+    col_norms = np.linalg.norm(R_with_scale, axis=0)
+    if np.any(col_norms < 1e-9):
+        raise ValueError(f"degenerate scale: column norms {col_norms}")
+    R = R_with_scale / col_norms[np.newaxis, :]
+    if np.linalg.det(R) < 0:
+        R = -R
+    t = T_obj_to_cam[:3, 3]
+    return R, t
+
+
+def extract_bbox_3d_mm(bottle_obj) -> list[float]:
+    """Local-frame bounding-box dimensions (w, d, h) in mm. Bottle object frame
+    has +Z up after bake_y_to_z_rotation; w=x-extent, d=y-extent, h=z-extent."""
+    import bpy
+    blender_obj = bottle_obj.blender_obj
+    bb = np.array([list(c) for c in blender_obj.bound_box])  # 8 corners, local frame
+    dims_local = bb.max(axis=0) - bb.min(axis=0)
+    # bound_box ignores object scale, so apply it manually; convert m -> mm.
+    scale = np.array(blender_obj.scale)
+    return [round(float(d * s * 1000.0), 3) for d, s in zip(dims_local, scale)]
+
+
+def build_pose_lookup(placed: list) -> dict:
+    """Returns {blender_object_name: {"R": ..., "t": ..., "bbox_3d_mm": ...}}.
+    Built once per scene; reused when assembling per-instance dicts."""
+    out = {}
+    for obj in placed:
+        try:
+            R, t = extract_pose_cam(obj)
+            bbox_3d_mm = extract_bbox_3d_mm(obj)
+        except Exception as e:
+            print(f"[warn] pose extraction failed for {obj.get_name()}: {e}")
+            continue
+        out[obj.get_name()] = {
+            "R": [[round(float(R[i, j]), 6) for j in range(3)] for i in range(3)],
+            "t": [round(float(t[i]), 6) for i in range(3)],
+            "object_up_axis": [0, 0, 1],          # +Z up in object frame after bake_y_to_z_rotation
+            "object_frame_unit": "mm",            # OBJ vertex coords are in mm
+            "bbox_3d_mm": bbox_3d_mm,
+        }
+    return out
+
+
 def render_amodal_masks(placed) -> dict:
     """Render each bottle in isolation (all others hidden) to get amodal masks.
     Returns dict: instance_name -> HxW uint8 mask (0/255)."""
@@ -403,12 +470,16 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
     seg = data["instance_segmaps"][0]
     attrs = data["instance_attribute_maps"][0]
 
+    # Per-instance 6-DOF pose in camera frame. See docs/pose_export_plan.md.
+    pose_lookup = build_pose_lookup(placed)
+
     instances = []
     for entry in attrs:
         inst_id = entry["idx"]
         # `name` is the per-instance Blender object name ("레보진시럽_02"); used
-        # only as the lookup key into amodal_masks. `class_name` (from cp_class_name)
-        # is the clean per-class label exposed to consumers of scene_gt.json.
+        # as the lookup key into amodal_masks AND pose_lookup. `class_name`
+        # (from cp_class_name) is the clean per-class label exposed to
+        # consumers of scene_gt.json.
         name = entry.get("name", f"inst_{inst_id}")
         class_name = entry.get("class_name") or name
         cat_id = entry.get("category_id", -1)
@@ -446,6 +517,7 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
             "amodal_px": amodal_px,
             "occlusion_rate": round(occlusion_rate, 4),
             "bbox_xywh_amodal": bbox,
+            "pose_cam": pose_lookup.get(name),  # None if pose extraction failed
         })
 
     # --- Suction-point GT (V1 stub for wiring verification)

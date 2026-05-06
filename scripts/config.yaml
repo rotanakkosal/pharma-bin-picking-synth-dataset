@@ -19,7 +19,8 @@ meshes:
 tray:
   inner_w: 0.70              # m (x) — sized to fit camera FOV at 1.286 m height
   inner_d: 0.45              # m (y)
-  wall_h: 0.20               # m (z) — tall enough to contain bouncing bottles, not just static ones
+  wall_h: 0.30               # m (z) — raised from 0.20 (2026-05-06): a 49-bottle pile easily
+                             # exceeded 20cm; bottles rolled over the top. 30cm holds the pile.
   wall_t: 0.010              # m
   color: [0.55, 0.72, 0.90, 1.0]  # light blue like reference image
 
@@ -28,9 +29,10 @@ ground:
   color: [0.85, 0.85, 0.85, 1.0]
 
 drop:
-  x_range: [-0.22, 0.22]     # 3cm margin: enough to prevent escapees, wide enough to spread bottles
-  y_range: [-0.12, 0.12]     # 3cm margin
-  z_range: [0.30, 0.50]      # restore drop height so bottles separate in flight before piling up
+  x_range: [-0.22, 0.22]     # 13cm margin from each tray wall — bottles need room to spread
+  y_range: [-0.12, 0.12]     # 10cm margin from each tray wall
+  z_range: [0.22, 0.30]      # 2026-05-06: lowered from [0.30, 0.50] to reduce impact velocity
+                             # (was 2.4-3.1 m/s, now 1.5-2.4 m/s) → less bounce energy → fewer escapees
   min_sim_time: 3
   max_sim_time: 6
 

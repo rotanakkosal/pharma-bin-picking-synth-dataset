@@ -138,6 +138,34 @@ def check_scene(scene_dir: Path, gt: dict, depth_range_mm: tuple[int, int]) -> d
     r["_suction_sseal"] = sseal_all
     r["_suction_swrench"] = swrench_all
     r["_suction_combined"] = s_combined_all
+
+    # --- 3D pose checks (added 2026-05-05; see docs/pose_export_plan.md) -----
+    n_pose_present = 0
+    t_norms: list[float] = []
+    for inst in gt["instances"]:
+        pose = inst.get("pose_cam")
+        if pose is None:
+            r["pose_cam_field_missing"] += 1
+            continue
+        n_pose_present += 1
+        for need in ("R", "t", "object_up_axis", "object_frame_unit", "bbox_3d_mm"):
+            if need not in pose:
+                r["pose_field_missing"] += 1
+        R = np.array(pose["R"])
+        t = np.array(pose["t"])
+        if R.shape != (3, 3):
+            r["pose_R_wrong_shape"] += 1
+            continue
+        if np.linalg.norm(R @ R.T - np.eye(3)) > 1e-3:
+            r["pose_R_not_orthogonal"] += 1
+        if abs(np.linalg.det(R) - 1.0) > 1e-3:
+            r["pose_R_det_not_one"] += 1
+        if np.linalg.norm(t) > 5.0 or t[2] <= 0:
+            # t[2] must be positive in OpenCV convention (camera looks +Z)
+            r["pose_t_implausible"] += 1
+        t_norms.append(float(np.linalg.norm(t)))
+    r["_pose_n_present"] = n_pose_present
+    r["_pose_t_norms"] = t_norms
     return r
 
 
@@ -254,10 +282,27 @@ def main():
         print(f"  S_combined         : min={min(sc_pool):.3f} mean={np.mean(sc_pool):.3f} max={max(sc_pool):.3f}")
     print()
 
+    # --- 3D pose report (added 2026-05-05) ---
+    print("--- 3D pose (per-instance pose_cam) ---")
+    pose_int_keys = (
+        "pose_cam_field_missing", "pose_field_missing",
+        "pose_R_wrong_shape", "pose_R_not_orthogonal",
+        "pose_R_det_not_one", "pose_t_implausible",
+    )
+    print("  integrity (want all zeros):")
+    for k in pose_int_keys:
+        print(f"    {k:<34} {totals[k]}")
+    pose_present = sum(r.get("_pose_n_present", 0) for _, r in scene_reports)
+    print(f"  instances with pose_cam    : {pose_present}/{n_inst}")
+    t_norm_pool = [v for _, r in scene_reports for v in r.get("_pose_t_norms", [])]
+    if t_norm_pool:
+        print(f"  ||t|| range (m)            : min={min(t_norm_pool):.3f} mean={np.mean(t_norm_pool):.3f} max={max(t_norm_pool):.3f}")
+    print()
+
     print("--- Known limitations (not checked) ---")
-    print("  - 3D bottle pose not exported → pose-variety coverage untestable")
     print("  - suction GT physical correctness not validated against real grasps (V3 future)")
     print("  - rendering realism (FID vs real L515 captures) not measured here")
+    print("  - pose-variety / yaw-pitch-roll histograms not aggregated here (raw R/t exported)")
 
 
 if __name__ == "__main__":
