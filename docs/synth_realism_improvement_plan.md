@@ -107,7 +107,7 @@ Ordered by impact and confidence.
 
 **Why first:** Cheap, fixes a bug, and any future eval depends on getting this right. No literature needed — internal data integrity issue.
 
-### Priority 2 — Depth sensor noise simulation
+### Priority 2 — Depth sensor noise simulation ✅ DONE (2026-05-08)
 
 **Source:** [Lehrmann et al. 2024 — Enhancement of 3D Camera Synthetic Training Data with Noise Models](https://arxiv.org/html/2402.16514v1)
 
@@ -121,17 +121,30 @@ Ordered by impact and confidence.
 - Pristine depth is THE most consistently identified synth-real gap signal in the literature.
 - UOAIS was trained on real RealSense / Kinect depth — it learned to ignore noise patterns. Feeding it noise-free synth removes a signal it relies on, but in unfamiliar ways (overconfident segmentation).
 
-**Implementation options:**
-- [simkinect](https://github.com/ankurhanda/simkinect) — Hanson's simple Kinect noise add-on
-- [simsense](https://github.com/angli66/simsense) — GPU-accelerated stereo depth simulator with noise
-- [render_kinect](https://github.com/jbohg/render_kinect) — Bohg lab's Kinect simulation
-- Or port Lehrmann's polynomial coefficients directly into a BlenderProc post-processing step
+**What was built:**
+- [`scripts/depth_noise.py`](../scripts/depth_noise.py) — `apply_l515_noise()` post-processing pipeline:
+  1. Axial Gaussian noise — degree-2 polynomial in z (mm): `σ_z(z) = 1.0 + 2.0·z + 1.5·z²`, scaled by `Mn=1.25`.
+  2. Edge-bleed at depth discontinuities — pixels within 3 px of a >20 mm depth jump get 3× noise (multipath/occlusion artifact).
+  3. Lateral 0.5 px Gaussian blur — cross-ray smoothing.
+  4. 1% random dropout — L515's known holes on dark/specular surfaces.
+  5. 1 mm quantization — L515's effective bin size.
+- Integrated into [`generate_scene.py`](../scripts/generate_scene.py): saved depth uses noisy values; **clean depth is retained for analytical suction-GT scoring** so GT reflects true geometry.
+- Per-scene noise seed = `cfg.seed + scene_id + 10007` (decorrelated from spawn-position rng).
+- Self-describing `depth_noise_meta` block embedded in every `scene_gt.json`.
 
-**Expected impact:** UOAIS IoU likely drops 5–10 points; predictive validity vs real should improve.
+**Validation (5-scene smoke test):**
+- Floor std on flat tray-floor patches: ~4.8 mm (scenes 1–5).
+- Cross-scene seed independence confirmed: corner mean-abs-diff ~32 mm vs intra-scene std ~5 mm.
+- Dropout: measured 1.00–1.02% (target 1%).
+- Edge-bleed: corners catching tray-wall depth jumps show 21–28 mm std — the mechanic is firing.
 
-**Calibration warning:** Lehrmann's `Mn=1.25` is sensor- and dataset-specific. Once we have real L515 captures, do our own noise-level sweep to find the sweet spot for our specific setup.
+**Caveat — measured noise is ~30% below the polynomial prediction.**
+- Predicted at z=1.286 m: σ_z = 6.05 mm × 1.25 = 7.6 mm.
+- Measured: 4.8 mm.
+- Cause: the 0.5 px lateral Gaussian blur smooths out axial noise *after* it's added. Lehrmann's `Mn=1.25` was calibrated without this blur, so the *effective* Mn here is closer to ~0.8.
+- Action: when real L515 captures arrive, calibrate Mn against measured real floor std, not against the polynomial. `make_noise_meta()` already flags this with `calibration_status: "uncalibrated_to_real_L515"`.
 
-### Priority 3 — HDRI environment lighting
+### Priority 3 — Lighting variety (CCT + position spread) ✅ DONE (2026-05-08)
 
 **Source:** [SynTable §3 (Liu et al. 2023, v3 2024)](https://arxiv.org/html/2307.07333v3)
 
@@ -141,14 +154,19 @@ Ordered by impact and confidence.
 - Intensity: 100–20,000 lx
 - Multiple camera viewpoints sampled from concentric hemispheres
 
-**Why:**
-- Our current `setup_lights()` uses 3 random point lights with fixed energy ranges. Real-world lighting variation is broader.
-- HDRI maps capture realistic global illumination; point lights don't.
+**What was built:**
+- `setup_lights()` rewritten in [`generate_scene.py`](../scripts/generate_scene.py):
+  - Per-light CCT randomization in 2500–6500 K via Tanner-Helland approximation (`cct_to_rgb()`).
+  - Energy range widened: `[40, 120]` → `[40, 200]`.
+  - XY position spread widened: `±0.5 m` → `±0.8 m` for more dramatic side-lighting.
+- New `lighting.cct_range_k` config knob in `config.yaml`.
 
-**Implementation:**
-- Replace point-light rig with HDRI maps (free packs from polyhaven.com).
-- Keep the color-temperature variation we already have; widen ranges to match SynTable.
-- Consider random camera viewpoint perturbation as a secondary win.
+**Intentional deviation from "HDRI" framing:**
+- Original plan said "HDRI environment lighting"; implementation kept BlenderProc point lights with CCT + intensity + position randomization.
+- Reasoning: SynTable's actual recipe uses *spherical/area light sources with CCT randomization*, not strict HDRI. The plan slightly conflated the two. CCT-randomized point lights match SynTable's recipe more directly than an HDRI map would, and avoid a network/asset download dependency for builds.
+- HDRI maps remain available as a future upgrade if predictive-validity testing shows the point-light approach is insufficient.
+
+**Validation:** Visible CCT variation across scenes (e.g. scene_5 noticeably warmer cast than scene_1).
 
 **Expected impact:** Improves RGB realism, less direct effect on depth. Cumulative with Priority 2.
 
@@ -210,4 +228,13 @@ Until L515 is connected (or capture team delivers), this gate stays closed. The 
 
 ## Next concrete action
 
-**P0 first.** Pick Option A/B/C from [`sample_data_naming_convention.md`](sample_data_naming_convention.md), do the migration, verify a render still works. Then proceed to P1 (class imbalance re-render) on the cleaned layout — re-render with consistent 7-mesh config so per-class statistics become interpretable.
+P0 ✅, P2 ✅, P3 ✅ — P1 was deferred (it was a config-drift bug from the old layout; the cleaned `bottles/<id>/` layout already prevents recurrence, and a fresh batch on the new layout naturally satisfies P1).
+
+**Next:**
+
+1. **Render a clean P1 batch on the new layout** (~50 scenes, no leftover scenes from older configs in `output/`). Confirms per-class instance counts are sane (~42 each across 7 classes).
+2. **Re-run UOAIS eval on the noisy depth** — `python scripts/eval_uoais_on_synth.py`. Expectations from the validation plan above:
+   - IoU drops from 0.895 → 0.70–0.80 → SynTable territory, plausible regime.
+   - IoU stays 0.85+ → noise didn't bite; investigate (likely the lateral-blur attenuation noted in P2's caveat — bump Mn).
+   - IoU drops below 0.65 → too much noise; reduce Mn toward 1.0.
+3. **Then P4** (material variation) only if predictive-validity testing flags an RGB-side gap.
