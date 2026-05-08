@@ -326,17 +326,51 @@ def setup_camera(c: dict, rng: random.Random):
     bproc.camera.add_camera_pose(cam_pose)
 
 
+def cct_to_rgb(cct_k: float) -> tuple[float, float, float]:
+    """Approximate color-temperature (Kelvin) to linear RGB. Krystek 1985-ish
+    polynomial fit, accurate enough for lighting variety. Returns values in [0, 1+].
+    """
+    # Tanner Helland approximation — clamp inputs to avoid divide-by-zero edge.
+    t = max(1000.0, min(40000.0, float(cct_k))) / 100.0
+    if t <= 66:
+        r = 1.0
+        g = max(0.0, min(1.0, (99.4708025861 * math.log(t) - 161.1195681661) / 255.0)) if t > 1.0 else 0.0
+    else:
+        r = max(0.0, min(1.0, (329.698727446 * ((t - 60) ** -0.1332047592)) / 255.0))
+        g = max(0.0, min(1.0, (288.1221695283 * ((t - 60) ** -0.0755148492)) / 255.0))
+    if t >= 66:
+        b = 1.0
+    elif t <= 19:
+        b = 0.0
+    else:
+        b = max(0.0, min(1.0, (138.5177312231 * math.log(t - 10) - 305.0447927307) / 255.0))
+    return (r, g, b)
+
+
 def setup_lights(lc: dict, rng: random.Random):
+    """Per-scene lighting variety — broader than V1's fixed-color point lights.
+    Per SynTable §3 (Liu et al. 2023): color temperature 2000-6500 K, varied
+    intensity, varied position. We keep BlenderProc point lights (HDRI maps
+    would need a download dependency) but add color-temperature randomization
+    and wider position spread to match the published lighting recipe."""
     bproc.renderer.set_world_background([1, 1, 1], strength=lc.get("world_strength", 0.3))
-    for _ in range(lc["n_lights"]):
+
+    # SynTable lighting parameters (defaults overridable from config)
+    cct_range = lc.get("cct_range_k", [2500, 6500])     # warm tungsten -> daylight
+    n_lights = lc["n_lights"]
+
+    for _ in range(n_lights):
         light = bproc.types.Light()
         light.set_type("POINT")
+        # Wider XY spread — was [-0.5, 0.5], now [-0.8, 0.8] for more dramatic side-lighting
         light.set_location([
-            rng.uniform(-0.5, 0.5),
-            rng.uniform(-0.5, 0.5),
+            rng.uniform(-0.8, 0.8),
+            rng.uniform(-0.8, 0.8),
             rng.uniform(*lc["height_range"]),
         ])
         light.set_energy(rng.uniform(*lc["energy_range"]))
+        cct = rng.uniform(*cct_range)
+        light.set_color(cct_to_rgb(cct))
 
 
 # Blender camera frame:  +X right,  +Y up,   -Z forward (into scene)
@@ -456,14 +490,28 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
 
     from PIL import Image
     from suction_gt import compute_suction_gt, make_suction_meta
+    from depth_noise import apply_l515_noise, make_noise_meta
 
     # --- RGB
     rgb = data["colors"][0]
     Image.fromarray(rgb).save(scene_dir / "rgb" / "0000.png")
 
-    # --- Depth: convert meters -> uint16 mm to match sample_data format
+    # --- Depth: convert meters -> uint16 mm to match sample_data format.
+    # We keep two depth maps: depth_m (clean, used for suction-GT computation
+    # so analytical scoring reflects true surface geometry) and depth_noisy_m
+    # (realistic L515-style noise, saved to disk so consumers see real-sensor-
+    # like input). See docs/synth_realism_improvement_plan.md §P2.
     depth_m = data["depth"][0]
-    depth_mm = np.clip(depth_m * 1000.0, 0, 65535).astype(np.uint16)
+    # Per-scene unique noise seed: parse scene_id from scene_dir name and
+    # combine with the global seed. The +10007 offset decorrelates from the
+    # spawn-position rng (which uses cfg.seed + scene_id directly).
+    try:
+        scene_id_from_dir = int(scene_dir.name.split("_")[-1])
+    except ValueError:
+        scene_id_from_dir = 0
+    noise_seed = cfg["output"]["seed"] + scene_id_from_dir + 10007
+    depth_noisy_m = apply_l515_noise(depth_m, seed=noise_seed)
+    depth_mm = np.clip(depth_noisy_m * 1000.0, 0, 65535).astype(np.uint16)
     Image.fromarray(depth_mm).save(scene_dir / "depth" / "0000.png")
 
     # --- Visible / amodal / occlusion per instance
@@ -559,6 +607,7 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
             [0, 0, 1],
         ],
         "suction_meta": make_suction_meta(),
+        "depth_noise_meta": make_noise_meta(),
         "instances": instances,
     }
     with open(scene_dir / "scene_gt.json", "w", encoding="utf-8") as f:

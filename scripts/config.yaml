@@ -51,9 +51,11 @@ camera:
 
 lighting:
   n_lights: 3
-  energy_range: [40, 120]        # dimmer than before to avoid overexposure
+  energy_range: [40, 200]        # 2026-05-08: widened from [40,120] for more variety
   height_range: [1.8, 2.5]
   world_strength: 0.4            # ambient world light
+  cct_range_k: [2500, 6500]      # 2026-05-08: SynTable-style color temperature randomization
+                                 # (warm tungsten 2500K → cool daylight 6500K)
 
 render:
   samples: 64                # low for speed; bump to 256 for final quality
