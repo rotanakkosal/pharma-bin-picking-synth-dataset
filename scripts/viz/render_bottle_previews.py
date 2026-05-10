@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 OUTPUT_DIR = REPO / "output"
 BOTTLES_DIR = REPO / "sample_data" / "bottles"
 PAD_PX = 24

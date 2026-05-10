@@ -23,7 +23,7 @@ import numpy as np
 import open3d as o3d
 
 # Centralized depth-unit handling — see scripts/depth_io.py
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from depth_io import load_depth_m
 
 

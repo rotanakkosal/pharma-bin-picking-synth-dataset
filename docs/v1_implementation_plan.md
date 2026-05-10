@@ -63,7 +63,7 @@ def compute_suction_gt(
 
 Insert call to `compute_suction_gt()` between line 428 (per-instance amodal pass) and line 432 (save_outputs). Pass results to `save_outputs()` so they get embedded in `scene_gt.json`.
 
-### 4. Update `scripts/dataset_qc.py`
+### 4. Update `scripts/eval/dataset_qc.py`
 
 Add new QC checks:
 - Every instance has a `suction_points` list (possibly empty)
@@ -87,7 +87,7 @@ Add new QC checks:
 
 1. Run `blenderproc run scripts/generate_scene.py --config scripts/config.yaml --scene-id 999`
 2. Confirm `scene_gt.json` contains `suction_points` per instance
-3. Run `python scripts/dataset_qc.py --output-dir output/`
+3. Run `python scripts/eval/dataset_qc.py --output-dir output/`
 4. Confirm new QC checks pass (no errors, score distribution looks reasonable)
 5. Visualize top-3 suction points on rgb image (write a tiny `viz_suction.py`)
 6. Eyeball check: top-scored points should land on bottle caps / centers, not on edges or curved sides

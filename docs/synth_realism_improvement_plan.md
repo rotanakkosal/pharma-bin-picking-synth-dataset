@@ -189,7 +189,7 @@ Ordered by impact and confidence.
 
 ## Validation plan
 
-1. **Apply P1 + P2 first** (class imbalance fix + depth noise). Re-render. Re-evaluate UOAIS via `scripts/eval_uoais_on_synth.py`.
+1. **Apply P1 + P2 first** (class imbalance fix + depth noise). Re-render. Re-evaluate UOAIS via `scripts/eval/eval_uoais_on_synth.py`.
 
 2. **Compare:**
    - If UOAIS IoU drops to 0.70–0.80 range — aligns with SynTable's 0.81 on real OSD-Amodal. Plausible regime.
@@ -233,7 +233,7 @@ P0 ✅, P2 ✅, P3 ✅ — P1 was deferred (it was a config-drift bug from the o
 **Next:**
 
 1. **Render a clean P1 batch on the new layout** (~50 scenes, no leftover scenes from older configs in `output/`). Confirms per-class instance counts are sane (~42 each across 7 classes).
-2. **Re-run UOAIS eval on the noisy depth** — `python scripts/eval_uoais_on_synth.py`. Expectations from the validation plan above:
+2. **Re-run UOAIS eval on the noisy depth** — `python scripts/eval/eval_uoais_on_synth.py`. Expectations from the validation plan above:
    - IoU drops from 0.895 → 0.70–0.80 → SynTable territory, plausible regime.
    - IoU stays 0.85+ → noise didn't bite; investigate (likely the lateral-blur attenuation noted in P2's caveat — bump Mn).
    - IoU drops below 0.65 → too much noise; reduce Mn toward 1.0.

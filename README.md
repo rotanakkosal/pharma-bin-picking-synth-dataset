@@ -190,13 +190,13 @@ Each scene runs in its own Blender process (BlenderProc requirement). Expect ~95
 
 ### Quality checks
 ```bash
-python scripts/dataset_qc.py --output-dir output
+python scripts/eval/dataset_qc.py --output-dir output
 ```
 Validates 14 integrity invariants (8 suction GT + 6 pose + mask containment) plus reports class balance, occlusion histogram, and score distributions. A clean run shows **all zeros** in the integrity sections.
 
 ### Visualizing suction GT overlay
 ```bash
-python scripts/viz_suction.py --scene output/scene_000001 --top 5 --cup-radius
+python scripts/viz/viz_suction.py --scene output/scene_000001 --top 5 --cup-radius
 ```
 Saves `suction_overlay.png` next to the rgb image — green dots = high quality, red = low.
 
@@ -282,10 +282,22 @@ pharma-bin-picking-synth-dataset/
 ├── scripts/
 │   ├── config.yaml                    # all scene/render/camera knobs
 │   ├── generate_scene.py              # main BlenderProc script
-│   ├── suction_gt.py                  # V1 suction GT module
-│   ├── viz_suction.py                 # suction overlay visualizer
-│   ├── dataset_qc.py                  # 14 integrity checks + coverage report
-│   └── run_batch.sh                   # batch runner
+│   ├── run_batch.sh                   # batch runner
+│   ├── depth_io.py                    # core: depth save/load
+│   ├── depth_noise.py                 # core: L515-style noise model
+│   ├── suction_gt.py                  # core: V1 suction GT module
+│   ├── eval/                          # evaluation tools
+│   │   ├── eval_uoais_on_synth.py     # UOAIS-vs-GT IoU/mAP scoring
+│   │   └── dataset_qc.py              # 14 integrity checks + coverage report
+│   ├── viz/                           # visualization tools
+│   │   ├── viz_suction.py             # suction overlay visualizer
+│   │   ├── visualize_classes.py       # class-label overlay
+│   │   ├── render_bottle_previews.py  # per-bottle preview cropper
+│   │   ├── record_drop_video.py       # physics-drop side-view video
+│   │   └── viz_simsuction_grasps.py   # Sim-Suction grasp overlay
+│   ├── convert/                       # format conversion
+│   │   └── convert_scene_to_simsuction.py
+│   └── archive/                       # obsolete scripts (kept for reference)
 ├── sample_data/bottles/               # 7 ASCII-named per-bottle folders
 └── output/                            # generated scenes (gitignored)
 ```

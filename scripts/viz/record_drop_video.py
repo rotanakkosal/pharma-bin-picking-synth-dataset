@@ -17,7 +17,7 @@ from pathlib import Path
 import bpy
 import mathutils
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "scripts"))
 
 from generate_scene import (  # noqa: E402

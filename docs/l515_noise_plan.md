@@ -230,10 +230,10 @@ Step 1.1 (~15 min): scripts/depth_io.py with load_depth_m(scene_dir)
     - Single source of truth for depth-unit handling
 
 Step 1.2 (~25 min): Migrate 5 consumers to use load_depth_m()
-    - synth-dataset/scripts/convert_scene_to_simsuction.py (3 callsites)
-    - synth-dataset/scripts/dataset_qc.py (3 callsites)
-    - synth-dataset/scripts/viz_simsuction_grasps.py (1 callsite)
-    - synth-dataset/scripts/eval_uoais_on_synth.py (1 callsite, then *1000 for normalize_depth)
+    - synth-dataset/scripts/convert/convert_scene_to_simsuction.py (3 callsites)
+    - synth-dataset/scripts/eval/dataset_qc.py (3 callsites)
+    - synth-dataset/scripts/viz/viz_simsuction_grasps.py (1 callsite)
+    - synth-dataset/scripts/eval/eval_uoais_on_synth.py (1 callsite, then *1000 for normalize_depth)
     - pharma-bin-picking/tools/run_on_synth.py (similar pattern, fix at call site, do NOT touch utils.py:normalize_depth)
     - VERIFY: each consumer produces byte-identical output against current v1 data
       (since load_depth_m falls back to 0.001, this should be a no-op)
