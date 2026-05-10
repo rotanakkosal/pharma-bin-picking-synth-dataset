@@ -1,12 +1,9 @@
 meshes:
-  dir: "sample_data/bottles"        # canonical layout — one ASCII-named folder per bottle id
+  dir: "sample_data/bottles"    
   labels_dir: "textures/labels"
   use_labels: true                  # procedural labels for non-textured bottles (fallback)
   unit_scale: 0.001                 # OBJ verts are in mm, Blender works in meters
   copies_per_mesh: 7                # 7 meshes × 7 = 49 bottles per scene
-  # Per-id textured-mesh overrides. If an id is listed here, the UV-mapped
-  # OBJ + photoreal label texture replace the plain mesh.obj + procedural
-  # label. Paths are relative to meshes.dir.
   textured:
     bottles:
       kolmin_a_syrup:
@@ -17,10 +14,9 @@ meshes:
         label_texture: "levozin_syrup/label.png"
 
 tray:
-  inner_w: 0.70              # m (x) — sized to fit camera FOV at 1.286 m height
+  inner_w: 0.70              # m (x) 
   inner_d: 0.45              # m (y)
-  wall_h: 0.30               # m (z) — raised from 0.20 (2026-05-06): a 49-bottle pile easily
-                             # exceeded 20cm; bottles rolled over the top. 30cm holds the pile.
+  wall_h: 0.30               # m (z)
   wall_t: 0.010              # m
   color: [0.55, 0.72, 0.90, 1.0]  # light blue like reference image
 
@@ -29,10 +25,10 @@ ground:
   color: [0.85, 0.85, 0.85, 1.0]
 
 drop:
-  x_range: [-0.22, 0.22]     # 13cm margin from each tray wall. 2026-05-08: tried tightening to [-0.15, 0.15] but escape rate got WORSE (63-67% vs 70-77%) — closer-spawned bottles collide mid-fall more, knocking each other out. Rolled back.
-  y_range: [-0.12, 0.12]     # 10cm margin from each tray wall (rolled back from [-0.08, 0.08])
-  z_range: [0.22, 0.30]      # 2026-05-06: lowered from [0.30, 0.50] to reduce impact velocity
-                             # (was 2.4-3.1 m/s, now 1.5-2.4 m/s) → less bounce energy → fewer escapees
+  x_range: [-0.22, 0.22]     # 13cm margin from each tray wall.
+  y_range: [-0.12, 0.12]     # 10cm margin from each tray wall 
+  z_range: [0.22, 0.30]      
+
   min_sim_time: 3
   max_sim_time: 6
 
@@ -44,20 +40,18 @@ camera:
   cy: 559.8935546875
   width: 1920
   height: 1080
-  # Top-down pose. One height is sampled per scene from `heights_m`.
-  # 1.286 m matches the real L515 extrinsics (t_z ≈ 1286 mm); the others
-  # bracket realistic deployment-height variation. Chosen height is recorded
-  # in scene_gt.json as `camera_height_m` so eval can bucket by height.
-  heights_m: [1.1, 1.286, 1.4, 1.5]
+  # 1.286 m matches the real L515 extrinsics
+  # heights_m: [1.1, 1.286, 1.4, 1.5, 1.8]
+  heights_m: [0.7, 0.8, 0.9, 1.0]
   jitter_xy_m: 0.02          # small positional jitter per scene
   jitter_rot_deg: 2.0        # small yaw/tilt jitter
 
 lighting:
   n_lights: 3
-  energy_range: [40, 200]        # 2026-05-08: widened from [40,120] for more variety
+  energy_range: [40, 200]      
   height_range: [1.8, 2.5]
-  world_strength: 0.4            # ambient world light
-  cct_range_k: [2500, 6500]      # 2026-05-08: SynTable-style color temperature randomization
+  world_strength: 0.4       
+  cct_range_k: [2500, 6500]      # SynTable-style color temperature randomization
                                  # (warm tungsten 2500K → cool daylight 6500K)
 
 render:
