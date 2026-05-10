@@ -15,11 +15,16 @@ Usage:
 """
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 import open3d as o3d
+
+# Centralized depth-unit handling — see scripts/depth_io.py
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from depth_io import load_depth_m
 
 
 def main():
@@ -42,7 +47,10 @@ def main():
     cx, cy = K[0, 2], K[1, 2]
 
     rgb = cv2.cvtColor(cv2.imread(str(scene / "rgb/0000.png")), cv2.COLOR_BGR2RGB)
-    depth_mm = cv2.imread(str(scene / "depth/0000.png"), cv2.IMREAD_UNCHANGED).astype(np.float32)
+    # Use centralized helper — honors depth_unit_m from scene_gt.json
+    # (BOP convention; falls back to 0.001 m for legacy v1 mm scenes).
+    depth_m = load_depth_m(scene)
+    depth_mm = depth_m * 1000.0   # keep --min/max-depth-mm CLI semantics
     H, W = depth_mm.shape
 
     # Build per-pixel instance-id map from visible masks

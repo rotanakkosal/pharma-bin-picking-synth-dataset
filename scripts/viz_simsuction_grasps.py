@@ -3,10 +3,15 @@ Reads the pickled results and reprojects world-frame 3D points back to 2D."""
 import argparse
 import json
 import pickle
+import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
+
+# Centralized depth-unit handling — see scripts/depth_io.py
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from depth_io import load_depth_m
 
 
 def world_to_camera_cm(xyz_world_cm, cam_height_cm):
@@ -62,8 +67,10 @@ def main():
 
     # Figure out cam height: from conversion we used max(z_cam) which ≈ max(depth).
     # For scene_000033 we empirically saw ~128.6 cm. Re-derive from depth image.
-    depth = cv2.imread(str(args.scene_dir / "depth/0000.png"), cv2.IMREAD_UNCHANGED)
-    cam_h_cm = args.cam_height_cm or (depth[depth > 0].max() / 10.0)
+    # Use centralized helper to honor depth_unit_m (BOP convention; v1 falls
+    # back to mm so depth_m * 100 = the legacy mm/10 cm computation).
+    depth_m = load_depth_m(args.scene_dir)
+    cam_h_cm = args.cam_height_cm or float(depth_m[depth_m > 0].max() * 100.0)
     print(f"cam height used: {cam_h_cm:.1f} cm")
 
     xyz_cam = world_to_camera_cm(pts_world, cam_h_cm)

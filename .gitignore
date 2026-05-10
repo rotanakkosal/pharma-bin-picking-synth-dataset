@@ -4,5 +4,6 @@ __pycache__/
 *.log
 *.pyc
 scripts/_tmp_meshes/
+.cache/
 sample_data/
 synth_for_uoais/

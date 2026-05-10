@@ -31,8 +31,14 @@ for i in $(seq 0 $((N - 1))); do
         --scene-id "$SCENE_ID" \
         > "output/scene_${SCENE_ID}.log" 2>&1; then
         dt=$((SECONDS - t0))
-        n_inst=$(python3 -c "import json; d=json.load(open('output/scene_$(printf %06d $SCENE_ID)/scene_gt.json')); print(len(d['instances']))" 2>/dev/null || echo "?")
-        echo "ok (${dt}s, ${n_inst} instances)"
+        # Scenes are now grouped under output/h_<height>/scene_xxxxxx/, so glob to find it.
+        SCENE_GT=$(ls output/h_*/scene_$(printf %06d $SCENE_ID)/scene_gt.json 2>/dev/null | head -n1)
+        if [[ -n "$SCENE_GT" ]]; then
+            n_inst=$(python3 -c "import json; d=json.load(open('$SCENE_GT')); print(f\"{len(d['instances'])} inst, h={d['camera_height_m']}m\")" 2>/dev/null || echo "?")
+        else
+            n_inst="?"
+        fi
+        echo "ok (${dt}s, ${n_inst})"
     else
         echo "FAILED — see output/scene_${SCENE_ID}.log"
     fi

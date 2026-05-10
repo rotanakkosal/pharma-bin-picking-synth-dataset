@@ -1,8 +1,31 @@
 # L515-Specific Depth Noise Plan
 
 **Date:** 2026-05-08
-**Status:** Plan, awaiting user review BEFORE implementation
+**Status:** APPROVED for implementation; revised after independent reviewer audit (see `docs/agent-feedback/l515_noise_plan/review_2026-05-08.md`).
 **Driver:** Current `depth_noise.py` uses Lehrmann 2024's polynomial coefficients fit for **Kinect v1/v2 + MotionCam-3D**, NOT for the Intel L515. Literature shows our model is ~15× too noisy and misses the L515's actual dominant failure modes.
+
+## Revisions in this version (post-review)
+
+The independent reviewer flagged four critical issues, six important gaps, and four nice-to-haves. After triage:
+
+| ID | Finding | Action |
+|---|---|---|
+| **A1** | 0.25 mm internal quantization is destroyed by `*1000 → uint16` storage | **Fix.** Switch storage to `*4000`, expose `depth_unit_m: 0.00025` (BOP convention). Migrate 5 hardcoded-mm consumer scripts via centralized helper. |
+| **A2** | Scope B drops systematic bias, but back-projected GT depends on absolute depth | **Fix.** Promote 5 mm radial bias from Scope C → B. Apply to saved depth only. |
+| **A3** | Visible-luminance is a wrong proxy for 860 nm IR specular/dark dropout | **Partial fix.** Augment luminance with surface-normal angle from BlenderProc. Label as approximate in metadata. Full BSDF integration deferred to V3. |
+| **A4** | No grazing-incidence dropout — exactly the dominant failure for top-down cylinders | **Fix.** Add `cos(angle_to_camera)` term using BlenderProc normal pass. |
+| **B1** | Polynomial coefficients are fitted to bound, not from a paper | **Fix.** Honest metadata: `"derivation": "fitted to Berlin 2021 upper-bound; not from published parametric model"`. |
+| **B2** | Firmware preset not specified | **Fix.** Add `"firmware_preset_target": "Short Range"` to metadata. |
+| **B3** | Near-range dropout (<0.25 m blind zone) | **Document only** — our 1.286 m setup is well outside the blind zone. |
+| **B4** | RGB-depth registration error not modeled (real L515 has 2–4 px misalignment) | **Fix.** 0–3 px random integer shift between saved RGB and saved depth. |
+| **B5** | No confidence map output | **Defer to V3** — separate pipeline-output change, not core noise. |
+| **B6** | Cheap proxy validation feasible NOW (public L515 captures) | **Defer.** 25 min search yielded only Open3D `L515_test`/`L515_JackJack` bag files (single-subject, require Open3D install + bag→PNG conversion, ~1-2 hr setup). Revisit when team has real captures. Document in metadata. |
+| **C1** | BSDF passes for material recovery | **Defer to V3.** |
+| **C2** | L535/D455 migration paragraph | **Add to plan.** |
+| **C3** | Temporal noise | **TODO comment only.** |
+| **C4** | Bin-corner multipath | **TODO comment only.** |
+
+The reviewer's verdict — *"proceed with Scope B, with three modifications"* — is honored: Scope B as implemented now includes A1–A4 fixes, B1/B2/B4 polish, with B5/B6 explicitly deferred and documented.
 
 ---
 
@@ -194,62 +217,122 @@ Reasoning:
 
 ---
 
-## Implementation plan (scope B, if approved)
+## Implementation plan (Scope B revised, post-review)
+
+Migration order matters: land the unit-handling helper + consumer migrations against v1 data first (no-op verification), THEN flip the storage format. Reversing this order opens a window where stale consumers silently misread.
 
 ```
-Step 1 (~10 min): Update DEFAULTS in depth_noise.py to L515 magnitudes
+═══ Phase 1 — Storage-unit migration (A1) ═══
+Step 1.1 (~15 min): scripts/depth_io.py with load_depth_m(scene_dir)
+    - Reads depth_unit_m from scene_gt.json (BOP convention)
+    - Falls back to 0.001 (legacy v1 mm) if field is absent → no-op for v1 data
+    - Returns depth as float32 meters
+    - Single source of truth for depth-unit handling
+
+Step 1.2 (~25 min): Migrate 5 consumers to use load_depth_m()
+    - synth-dataset/scripts/convert_scene_to_simsuction.py (3 callsites)
+    - synth-dataset/scripts/dataset_qc.py (3 callsites)
+    - synth-dataset/scripts/viz_simsuction_grasps.py (1 callsite)
+    - synth-dataset/scripts/eval_uoais_on_synth.py (1 callsite, then *1000 for normalize_depth)
+    - pharma-bin-picking/tools/run_on_synth.py (similar pattern, fix at call site, do NOT touch utils.py:normalize_depth)
+    - VERIFY: each consumer produces byte-identical output against current v1 data
+      (since load_depth_m falls back to 0.001, this should be a no-op)
+
+Step 1.3 (~10 min): Flip writer in generate_scene.py
+    - depth_noisy_m * 1000 → depth_noisy_m * 4000
+    - meta["depth_unit"] = "mm" → meta["depth_unit_m"] = 0.00025
+    - VERIFY: re-render scene_999, confirm consumers still work on v2 data
+
+═══ Phase 2 — L515-accurate noise model ═══
+Step 2.1 (~15 min): Update DEFAULTS in depth_noise.py to L515 magnitudes
     - axial_a0_mm 1.0 → 0.3
     - axial_a1_mm 2.0 → 0.1
     - axial_a2_mm 1.5 → 0.0
-    - quant_mm 1.0 → 0.25
+    - quant_mm 1.0 → 0.25 (now actually realized via *4000 storage)
     - dropout_rate 0.01 → 0.005
     - edge_noise_mult 3.0 → 1.5
 
-Step 2 (~30 min): Add material-dependent dropout helper
-    - new function apply_material_dropouts(depth_m, rgb_uint8, rng, ...)
-    - hook into apply_l515_noise as a new step (or expose separately)
-    - new DEFAULTS:
-        specular_luminance_threshold = 0.92
-        specular_dropout_rate = 0.10
-        dark_luminance_threshold = 0.10
-        dark_dropout_rate = 0.05
+Step 2.2 (~30 min): Material + normal-angle dropout (A3 + A4 combined)
+    - apply_material_dropouts(depth_m, rgb_uint8, normals_cam, rng, ...)
+    - Three terms (multiply probabilities, then random-test):
+        specular: lum > 0.92 → +10% dropout (A3)
+        dark:     lum < 0.10 → +5% dropout (A3)
+        grazing:  cos(normal · -ray) → smoothstep(0.5, 0.2) → up to +50% dropout (A4)
+    - All terms use the rendered surface-normal pass from BlenderProc
 
-Step 3 (~10 min): Update generate_scene.py call site
-    - pass rendered RGB (data["colors"][0]) into apply_l515_noise
-    - update make_noise_meta() to include new fields
+Step 2.3 (~15 min): Add 5 mm radial systematic bias (A2)
+    - Apply ONLY to saved depth (not to depth_m used by suction GT)
+    - Quadratic radial: bias = 0.005 * (xx² + yy²) m, applied per-pixel
+    - Plus low-freq Gaussian seed (mean=0, std=2 mm) for non-symmetric component
 
-Step 4 (~10 min): Update depth_noise_meta in scene_gt.json
-    - bump version "v1" → "v2-l515"
-    - add citations: Servi 2021, Berlin 2021, Intel L515 docs
-    - update calibration_status
+Step 2.4 (~10 min): RGB-depth registration jitter (B4)
+    - Random per-scene integer shift in [0, 3] px
+    - Applied as np.roll on the saved depth array AFTER all noise
+    - Documented as a tunable in metadata
 
-Step 5 (~15 min): Run scene 999, eyeball check
-    - depth.png should look much cleaner overall (lower σ)
-    - bottle caps with bright highlights should have black holes (specular drop)
-    - dark label regions should have scattered dropouts
+═══ Phase 3 — Metadata + integration ═══
+Step 3.1 (~15 min): Update generate_scene.py integration
+    - Pass rendered RGB (data["colors"][0]) into apply_l515_noise
+    - Pass surface-normal pass (data["normals"][0] from bproc) into apply_l515_noise
+    - Update meta dict with new depth_unit_m, depth_noise_meta v2-l515
 
-Step 6 (~10 min): Run 5-scene QC, confirm no regressions
+Step 3.2 (~10 min): Update make_noise_meta() with all new fields
+    - "version": "v2-l515"
+    - "derivation": "fitted to Berlin 2021 upper-bound; not from published parametric model"  (B1)
+    - "firmware_preset_target": "Short Range"  (B2)
+    - "proxy_basis": "visible_luminance + normal_angle (approximate; not 860nm IR)"  (A3)
+    - Two-criterion validation note: "validation_criteria": ["magnitude (σ<0.5mm on flat tray)", "dropout-location vs RGB-luminance-extremes spatial correlation"]
+    - "validation_status": "deferred — no public L515 capture sufficient for dropout-pattern validation; awaiting team's L515 hardware"
+    - Citations: Servi 2021, Berlin 2021, Intel L515 docs/datasheet, librealsense issue #6636 (depth_units)
+
+═══ Phase 4 — Validation ═══
+Step 4.1 (~15 min): Run scene 999, eyeball-check three things
+    - depth.png on flat tray pixels: σ should be ~0.5 mm (was ~5 mm)
+    - depth.png on bottle caps with highlights: should have black holes (specular drop)
+    - depth.png on bottle SIDES (cylindrical, near grazing): should have widespread dropout (A4)
+
+Step 4.2 (~15 min): Run 5-scene batch + dataset_qc.py + visual diff
+    - All 14 integrity checks should pass
+    - Score distributions should be near-identical to V1.5 baseline (noise on saved depth only, not GT)
+    - Compare scene_000001 RGB unchanged from V1.5; depth dramatically different
 ```
 
-Total: ~85 min. No new dependencies.
+**Total: ~175 min** (was 85 min original estimate; review identified +90 min of must-fix items).
+
+No new dependencies. All work in this repo + minimal touches in sibling pharma-bin-picking/.
 
 ---
 
 ## Validation plan
 
-Without real L515 captures, we can validate three properties:
+### What we can check without real captures
 
 | Property | How |
 |---|---|
-| Magnitudes match spec | Compute σ on flat tray-floor pixels in a rendered scene → expect ~0.5 mm |
-| Dropouts concentrate correctly | Visualize: should see black holes on bright spots (cap glints) and dark spots (text), not random scatter |
+| Magnitudes match spec | σ on flat tray-floor pixels in a rendered scene → expect ~0.5 mm at 1.286 m camera height |
+| Dropouts concentrate correctly | Visualize: black holes on bright spots (cap glints), speckle on dark text, broad dropout on bottle sides (grazing) |
+| GT computation untouched | suction-point scores identical to V1.5 baseline (proves noise didn't leak into GT) |
 | Existing pipeline still passes | All 14 integrity checks remain at 0 violations |
 
-When real L515 captures arrive (Layer 3 work):
-- Capture same scene under both synth and real
-- Compare depth histograms
-- Tune `Mn`, `dropout_rate`, `specular_dropout_rate` to minimize KS-distance between distributions
-- Update `depth_noise_meta.calibration_status` from "uncalibrated" to "calibrated to L515 SN xxx 2026-MM-DD"
+### Two-criterion validation when real L515 captures arrive (B6 deferred)
+
+Magnitude validation alone does **not** prove the dropout model is right. Must test BOTH:
+
+**Criterion 1 — Magnitude.** σ on flat tray-floor pixels in real captures should match Berlin 2021's < 0.5 mm bound. Run the same statistic on synth and on real, compare distributions (KS-distance, χ² goodness-of-fit).
+
+**Criterion 2 — Dropout location.** Dropout pixels in real captures should spatially correlate with rendered RGB luminance extremes (lum > 0.92 ∪ lum < 0.10) on the same scene. This is the actual Scope B claim — magnitude validation alone doesn't test it. Procedure:
+1. Capture the same physical bin scene under real L515 and render the same scene synth (matching object placements as best we can)
+2. For each scene, compute the dropout-mask (depth = 0 pixels)
+3. For each scene, compute luminance extremes on RGB
+4. Spatial correlation: IoU between (real dropout) and (luminance extreme) masks should be ≥ 0.6 (proxy: synth dropout should land where real dropout lands)
+5. If IoU is low, recalibrate `specular_dropout_rate`, `dark_dropout_rate`, `grazing_dropout_max`, and adjust luminance thresholds
+
+Update `depth_noise_meta.validation_status` from `"deferred"` to `"calibrated to L515 SN xxx 2026-MM-DD; magnitude_match=<value>; dropout_iou=<value>"` once both criteria pass.
+
+### Non-validation — proxies considered and rejected for V2
+
+- **LM-O / SHOP-VRB / T-LESS / CLUBS comparison:** these use PrimeSense / Kinect / D415 — different sensors with different failure modes. Validating L515 dropout patterns against structured-light or stereo would push our parameters in the wrong direction. Per reviewer guidance, do not substitute non-L515 datasets.
+- **Open3D `L515_test` / `L515_JackJack` .bag samples:** authentic L515, but require Open3D installation + bag→PNG conversion (~1-2 hr setup) and are single-subject scenes (not bin clutter). Revisit if team's real L515 is delayed beyond a few weeks; otherwise wait for in-house captures.
 
 ---
 
@@ -271,10 +354,21 @@ When real L515 captures arrive (Layer 3 work):
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Reduced noise eliminates the realism benefit (synth becomes "too clean" again) | Low — material dropouts compensate | Verify visually on scene 999; can boost dropout rates if needed |
-| Material-dropout uses RGB, but RGB has its own randomization (CCT lights from P3) → dropout pattern varies scene-to-scene unpredictably | Medium | Document this as a feature: real L515 ALSO varies dropout patterns based on lighting. Acceptable. |
+| Reduced noise eliminates the realism benefit (synth becomes "too clean" again) | Low — grazing + material dropouts compensate | Verify visually on scene 999; can boost dropout rates if needed |
+| Material-dropout uses visible RGB, but RGB has its own randomization (CCT lights from P3) → dropout pattern varies scene-to-scene unpredictably | Medium | Acceptable: real L515 also varies dropout based on lighting. Document explicitly. |
 | Algorithm-development on this updated synth requires re-running all prior validation | Low | Existing `output/` is small (5 scenes), trivial to re-render |
-| L515 was discontinued by Intel in 2022 — research interest is shifting to L535/D435 successors | Medium (long-term) | Document the L515 specificity; if hardware changes, revisit calibration |
+| L515 was discontinued by Intel in 2022 — research interest shifting to L535/D435/D455 successors | Medium (long-term) | See L535/D455 migration note below |
+| Storage migration (Phase 1) breaks a hardcoded-mm consumer we missed in the grep | Low | Phase 1.2 verifies byte-identical output against v1 data before flipping the writer |
+| Phase 1 helper's 0.001 fallback masks future v3+ format changes silently | Low | Document explicitly in helper docstring; future format bumps must always set `depth_unit_m` field |
+
+## L535/D455 migration note (C2)
+
+L515 is EOL since March 2022 (Intel PCN118463-00). If the team migrates to L535 or D455:
+
+- **L535:** Intel's announced successor (released late 2024). Same MEMS-LiDAR architecture as L515 — noise model parameters should transfer with re-calibration of `Mn` and dropout rates. The fundamental failure modes (specular, dark, grazing) remain the same.
+- **D455 (or D435i):** Stereo-IR active, fundamentally different physics. Noise scales as z² much more strongly. Dropouts are texture-dependent (not specular-dependent). The current model is **not portable** to D455 by tweaking constants — it would need a new noise module (`scripts/depth_noise_d455.py`).
+
+The `depth_noise_meta.firmware_preset_target` and citation block should be updated, and the version field bumped (e.g., `v3-l535`, `v3-d455`) when migrating.
 
 ---
 

@@ -14,11 +14,16 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
 import numpy as np
 from PIL import Image
+
+# Centralized depth-unit handling — see scripts/depth_io.py
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from depth_io import load_depth_m
 
 
 CLASS_RE = re.compile(r"^(.*?)_\d+$")
@@ -42,12 +47,12 @@ def check_scene(scene_dir: Path, gt: dict, depth_range_mm: tuple[int, int]) -> d
     r["n_instances"] = len(gt["instances"])
     r["category_id_minus1"] = sum(1 for i in gt["instances"] if i.get("category_id", -1) == -1)
 
-    # Depth — PIL reads 16-bit PNG as int32 in "I" mode on some versions, even
-    # though we save it as uint16. Both are fine; values are mm regardless.
-    depth_path = scene_dir / gt["depth"]
-    depth = np.asarray(Image.open(depth_path))
-    assert depth.dtype in (np.uint16, np.int32), f"depth dtype {depth.dtype}, expected uint16/int32"
-    r["depth_median_mm_all"] = int(np.median(depth[depth > 0])) if (depth > 0).any() else 0
+    # Depth — load via centralized helper that honors depth_unit_m from
+    # scene_gt.json (BOP convention; falls back to 0.001 m for legacy v1).
+    # We then convert to mm for the legacy depth_range_mm comparison.
+    depth_m = load_depth_m(scene_dir)
+    depth_mm = depth_m * 1000.0
+    r["depth_median_mm_all"] = int(np.median(depth_mm[depth_mm > 0])) if (depth_mm > 0).any() else 0
 
     occlusion_rates = []
     for inst in gt["instances"]:
@@ -78,9 +83,9 @@ def check_scene(scene_dir: Path, gt: dict, depth_range_mm: tuple[int, int]) -> d
             r["occlusion_rate_mismatch"] += 1
         occlusion_rates.append(inst["occlusion_rate"])
 
-        # (5) depth inside visible mask in plausible range
+        # (5) depth inside visible mask in plausible range (mm)
         if vis.any():
-            z_med = float(np.median(depth[vis]))
+            z_med = float(np.median(depth_mm[vis]))
             if not (depth_range_mm[0] <= z_med <= depth_range_mm[1]):
                 r["depth_out_of_range"] += 1
 

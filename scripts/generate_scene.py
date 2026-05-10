@@ -305,7 +305,7 @@ def load_and_drop_bottles(mesh_pairs, cfg, label_pool: list[Path], rng: random.R
     return placed
 
 
-def setup_camera(c: dict, rng: random.Random):
+def setup_camera(c: dict, rng: random.Random, scene_id: int) -> float:
     K = np.array([
         [c["fx"], 0, c["cx"]],
         [0, c["fy"], c["cy"]],
@@ -313,6 +313,10 @@ def setup_camera(c: dict, rng: random.Random):
     ])
     bproc.camera.set_intrinsics_from_K_matrix(K, c["width"], c["height"])
 
+    # Round-robin over heights_m by scene_id → guaranteed uniform coverage
+    # across buckets. Render N×len(heights) scenes for exactly N per bucket.
+    heights = c["heights_m"]
+    h = float(heights[scene_id % len(heights)])
     jx = rng.uniform(-c["jitter_xy_m"], c["jitter_xy_m"])
     jy = rng.uniform(-c["jitter_xy_m"], c["jitter_xy_m"])
     jyaw = math.radians(rng.uniform(-c["jitter_rot_deg"], c["jitter_rot_deg"]))
@@ -321,9 +325,11 @@ def setup_camera(c: dict, rng: random.Random):
     # default points -Z, so identity rotation already faces down when the
     # camera is above the scene. Add tiny yaw jitter.
     cam_pose = bproc.math.build_transformation_mat(
-        [jx, jy, c["height_m"]], [0, 0, jyaw]
+        [jx, jy, h], [0, 0, jyaw]
     )
     bproc.camera.add_camera_pose(cam_pose)
+    print(f"[info] camera height: {h:.3f} m (scene_id={scene_id} % {len(heights)} → bucket {scene_id % len(heights)} of {heights})")
+    return h
 
 
 def cct_to_rgb(cct_k: float) -> tuple[float, float, float]:
@@ -480,7 +486,7 @@ def _is_hidden(obj) -> bool:
         return False
 
 
-def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: dict):
+def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: dict, cam_height_m: float):
     scene_dir.mkdir(parents=True, exist_ok=True)
     (scene_dir / "rgb").mkdir(exist_ok=True)
     (scene_dir / "depth").mkdir(exist_ok=True)
@@ -510,9 +516,21 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
     except ValueError:
         scene_id_from_dir = 0
     noise_seed = cfg["output"]["seed"] + scene_id_from_dir + 10007
-    depth_noisy_m = apply_l515_noise(depth_m, seed=noise_seed)
-    depth_mm = np.clip(depth_noisy_m * 1000.0, 0, 65535).astype(np.uint16)
-    Image.fromarray(depth_mm).save(scene_dir / "depth" / "0000.png")
+    # v2-l515: pass RGB so the dropout model can apply specular/dark drops
+    # using visible-luminance as proxy for 860nm IR reflectivity. Normals are
+    # derived inside apply_l515_noise from the clean depth gradient.
+    rgb_for_noise = data["colors"][0]
+    depth_noisy_m = apply_l515_noise(
+        depth_m,
+        seed=noise_seed,
+        rgb=rgb_for_noise,
+    )
+    # v2-l515: store in 0.25 mm bins to match Intel L515's native depth_units
+    # (librealsense issue #6636). Consumers read depth_unit_m from scene_gt.json
+    # via scripts/depth_io.py:load_depth_m(); legacy v1 readers without that
+    # helper get a 4× scale error — migrate before deploying.
+    depth_raw = np.clip(depth_noisy_m * 4000.0, 0, 65535).astype(np.uint16)
+    Image.fromarray(depth_raw).save(scene_dir / "depth" / "0000.png")
 
     # --- Visible / amodal / occlusion per instance
     seg = data["instance_segmaps"][0]
@@ -594,11 +612,14 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
         inst["suction_points"] = suction_per_instance.get(inst["instance_id"], [])
 
     # --- scene_gt.json
+    # v2-l515 storage: depth_unit_m=0.00025 (L515 native bin size). BOP convention:
+    # depth_in_meters = depth_png_value * depth_unit_m. Legacy v1 used integer mm
+    # ("depth_unit": "mm" string field, depth_in_meters = depth_png_value * 0.001).
     meta = {
         "image_id": 0,
         "rgb": "rgb/0000.png",
         "depth": "depth/0000.png",
-        "depth_unit": "mm",
+        "depth_unit_m": 0.00025,
         "width": cfg["camera"]["width"],
         "height": cfg["camera"]["height"],
         "camera_K": [
@@ -606,6 +627,7 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
             [0, cfg["camera"]["fy"], cfg["camera"]["cy"]],
             [0, 0, 1],
         ],
+        "camera_height_m": round(cam_height_m, 4),
         "suction_meta": make_suction_meta(),
         "depth_noise_meta": make_noise_meta(),
         "instances": instances,
@@ -632,7 +654,7 @@ def main():
     # 1. copy Korean-named meshes to ASCII temp path
     repo_root = args.config.resolve().parent.parent  # synthetic_dataset_generate/
     mesh_src = (repo_root / cfg["meshes"]["dir"]).resolve()
-    mesh_tmp = repo_root / "output" / "_tmp_meshes"
+    mesh_tmp = repo_root / ".cache" / "tmp_meshes"
     mesh_pairs = ensure_ascii_mesh_copies(mesh_src, mesh_tmp)
     print(f"[info] loaded {len(mesh_pairs)} mesh classes from {mesh_src}")
 
@@ -655,7 +677,7 @@ def main():
     )
 
     # 5. camera + lights
-    setup_camera(cfg["camera"], rng)
+    cam_height_m = setup_camera(cfg["camera"], rng, args.scene_id)
     setup_lights(cfg["lighting"], rng)
 
     # 6. render passes — RGB + depth from render(), segmap from render_segmap()
@@ -677,9 +699,11 @@ def main():
     print(f"[info] rendering amodal masks for {len(placed)} instances...")
     amodal_masks = render_amodal_masks(placed)
 
-    # 8. save
-    scene_dir = (repo_root / cfg["output"]["dir"] / f"scene_{args.scene_id:06d}").resolve()
-    save_outputs(data, amodal_masks, scene_dir, placed, cfg)
+    # 8. save — group scenes by camera height bucket for easy per-height eval.
+    # `:g` strips trailing zeros so 1.1 → "h_1.1", 1.286 → "h_1.286".
+    height_bucket = f"h_{cam_height_m:g}"
+    scene_dir = (repo_root / cfg["output"]["dir"] / height_bucket / f"scene_{args.scene_id:06d}").resolve()
+    save_outputs(data, amodal_masks, scene_dir, placed, cfg, cam_height_m)
 
 
 if __name__ == "__main__":

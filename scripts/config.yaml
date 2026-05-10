@@ -44,8 +44,11 @@ camera:
   cy: 559.8935546875
   width: 1920
   height: 1080
-  # Top-down pose (matches your real extrinsics: t_z ≈ 1286 mm)
-  height_m: 1.286
+  # Top-down pose. One height is sampled per scene from `heights_m`.
+  # 1.286 m matches the real L515 extrinsics (t_z ≈ 1286 mm); the others
+  # bracket realistic deployment-height variation. Chosen height is recorded
+  # in scene_gt.json as `camera_height_m` so eval can bucket by height.
+  heights_m: [1.1, 1.286, 1.4, 1.5]
   jitter_xy_m: 0.02          # small positional jitter per scene
   jitter_rot_deg: 2.0        # small yaw/tilt jitter
 
