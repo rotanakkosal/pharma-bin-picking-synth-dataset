@@ -40,14 +40,7 @@ camera:
   cy: 559.8935546875
   width: 1920
   height: 1080
-  # 1.286 m matches the real L515 extrinsics (locked baseline per docs/team/team_workflow.md).
-  # Single-element list = single height for every scene; round-robin in
-  # generate_scene.py:319 trivially picks this one value.
   heights_m: [1.286]
-  # Past sweep configs kept for reference; require team-lead sign-off + plan
-  # doc entry before re-enabling (see docs/team/team_workflow.md "Locked baselines").
-  # heights_m: [1.1, 1.286, 1.4, 1.5, 1.8]   # earlier multi-height sweep
-  # heights_m: [0.7, 0.8, 0.9, 1.0]          # 2026-05-08 close-range exploratory sweep
   jitter_xy_m: 0.02          # small positional jitter per scene
   jitter_rot_deg: 2.0        # small yaw/tilt jitter
 
@@ -56,11 +49,10 @@ lighting:
   energy_range: [40, 200]      
   height_range: [1.8, 2.5]
   world_strength: 0.4       
-  cct_range_k: [2500, 6500]      # SynTable-style color temperature randomization
-                                 # (warm tungsten 2500K → cool daylight 6500K)
+  cct_range_k: [2500, 6500]  
 
 render:
-  samples: 64                # low for speed; bump to 256 for final quality
+  samples: 64                # low for speed, bump to 256 for final quality
   denoiser: "INTEL"
   depth_unit_mm: true        # save depth as uint16 mm to match sample_data
 

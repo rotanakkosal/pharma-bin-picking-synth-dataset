@@ -129,10 +129,23 @@ def stage_textured_mesh(label: str, src_obj: Path, src_tex: Path, tmp_dir: Path,
     return dst_obj
 
 
-def make_label_material(name: str, label_path: Path, body_tint, rng: random.Random):
-    """Create a Principled BSDF material with the label PNG as Base Color,
-    multiplied by a slight body-color tint so the 'white' parts of the label
-    take on the bottle body color."""
+def make_label_material(name: str, label_path: Path, body_tint, rng: random.Random,
+                        body_v_min: float = 0.10, body_v_max: float = 0.80,
+                        body_u_min: float = 0.15, body_u_max: float = 0.85):
+    """Build a label material where the label PNG only appears on a rectangular
+    region of the bottle body, with bare HDPE everywhere else.
+
+    Two bands:
+      V band [body_v_min, body_v_max]: vertical extent. Cap (above max) and
+        base (below min) show bare HDPE.
+      U band [body_u_min, body_u_max]: horizontal extent around the cylinder.
+        Defaults to 70% of the circumference, so ~30% of the back is bare HDPE.
+        This avoids the UV seam where the label image's left and right edges
+        would otherwise meet on the back of the bottle.
+
+    Defaults match a typical Korean pharmacy bottle: label covers a middle
+    rectangle, cap + base + back of bottle are bare white HDPE.
+    """
     import bpy
     mat = bproc.material.create(name)
     nodes = mat.blender_obj.node_tree.nodes
@@ -143,17 +156,80 @@ def make_label_material(name: str, label_path: Path, body_tint, rng: random.Rand
     img = bpy.data.images.load(str(label_path))
     img_node = nodes.new("ShaderNodeTexImage")
     img_node.image = img
-    img_node.location = (-600, 0)
+    img_node.location = (-1000, 0)
 
-    # Multiply the label image by a body tint (so the white background of the
-    # label becomes the bottle body color).
-    mix = nodes.new("ShaderNodeMixRGB")
-    mix.blend_type = "MULTIPLY"
-    mix.inputs["Fac"].default_value = 1.0
-    mix.inputs["Color2"].default_value = [*body_tint, 1.0]
-    mix.location = (-300, 0)
-    links.new(img_node.outputs["Color"], mix.inputs["Color1"])
-    links.new(mix.outputs["Color"], bsdf.inputs["Base Color"])
+    # Step 1: label image * body tint (so label whites take on body color)
+    label_mix = nodes.new("ShaderNodeMixRGB")
+    label_mix.blend_type = "MULTIPLY"
+    label_mix.inputs["Fac"].default_value = 1.0
+    label_mix.inputs["Color2"].default_value = [*body_tint, 1.0]
+    label_mix.location = (-700, 0)
+    links.new(img_node.outputs["Color"], label_mix.inputs["Color1"])
+
+    # Step 2: extract the V (vertical) coordinate of the UV map.
+    # After cylinder_project + scale_to_bounds, V=0 is the bottle base and V=1
+    # is the cap. Separate XYZ on the UV vector gives X=U, Y=V.
+    tex_coord = nodes.new("ShaderNodeTexCoord")
+    tex_coord.location = (-1000, 350)
+    sep_xyz = nodes.new("ShaderNodeSeparateXYZ")
+    sep_xyz.location = (-800, 350)
+    links.new(tex_coord.outputs["UV"], sep_xyz.inputs["Vector"])
+
+    # Step 3a: V band mask = (V > body_v_min) * (V < body_v_max).
+    v_gt = nodes.new("ShaderNodeMath")
+    v_gt.operation = "GREATER_THAN"
+    v_gt.inputs[1].default_value = body_v_min
+    v_gt.location = (-600, 500)
+    links.new(sep_xyz.outputs["Y"], v_gt.inputs[0])
+
+    v_lt = nodes.new("ShaderNodeMath")
+    v_lt.operation = "LESS_THAN"
+    v_lt.inputs[1].default_value = body_v_max
+    v_lt.location = (-600, 350)
+    links.new(sep_xyz.outputs["Y"], v_lt.inputs[0])
+
+    v_mask = nodes.new("ShaderNodeMath")
+    v_mask.operation = "MULTIPLY"
+    v_mask.location = (-400, 425)
+    links.new(v_gt.outputs["Value"], v_mask.inputs[0])
+    links.new(v_lt.outputs["Value"], v_mask.inputs[1])
+
+    # Step 3b: U band mask = (U > body_u_min) * (U < body_u_max).
+    # U wraps around the cylinder. Limiting to a sub-range hides the wrap
+    # seam on the back of the bottle.
+    u_gt = nodes.new("ShaderNodeMath")
+    u_gt.operation = "GREATER_THAN"
+    u_gt.inputs[1].default_value = body_u_min
+    u_gt.location = (-600, 200)
+    links.new(sep_xyz.outputs["X"], u_gt.inputs[0])
+
+    u_lt = nodes.new("ShaderNodeMath")
+    u_lt.operation = "LESS_THAN"
+    u_lt.inputs[1].default_value = body_u_max
+    u_lt.location = (-600, 50)
+    links.new(sep_xyz.outputs["X"], u_lt.inputs[0])
+
+    u_mask = nodes.new("ShaderNodeMath")
+    u_mask.operation = "MULTIPLY"
+    u_mask.location = (-400, 125)
+    links.new(u_gt.outputs["Value"], u_mask.inputs[0])
+    links.new(u_lt.outputs["Value"], u_mask.inputs[1])
+
+    # Step 3c: combine V and U masks. Label is visible only where both are 1.
+    mask = nodes.new("ShaderNodeMath")
+    mask.operation = "MULTIPLY"
+    mask.location = (-250, 275)
+    links.new(v_mask.outputs["Value"], mask.inputs[0])
+    links.new(u_mask.outputs["Value"], mask.inputs[1])
+
+    # Step 4: mix between plain HDPE (outside band) and label (inside band).
+    final_mix = nodes.new("ShaderNodeMixRGB")
+    final_mix.location = (-200, 0)
+    final_mix.inputs["Color1"].default_value = [*body_tint, 1.0]  # bare HDPE
+    links.new(mask.outputs["Value"], final_mix.inputs["Fac"])
+    links.new(label_mix.outputs["Color"], final_mix.inputs["Color2"])
+
+    links.new(final_mix.outputs["Color"], bsdf.inputs["Base Color"])
 
     # Plastic-like surface properties
     mat.set_principled_shader_value("Roughness", rng.uniform(0.35, 0.55))
