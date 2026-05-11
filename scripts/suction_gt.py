@@ -4,7 +4,7 @@ Suction-point ground truth generation for the pharma-bin synthetic benchmark.
 V1 — simplified analytical model based on Dex-Net 3.0 (Mahler et al. 2018,
 arXiv:1709.06670), SuctionNet-1Billion (Cao et al. 2021, arXiv:2103.12311),
 and Sim-Suction (Li & Cappelleri 2023, arXiv:2305.16378). See
-docs/suction_point_gt_plan.md for the full design.
+docs/suction_gt/suction_gt_design.md for the full design.
 
 For each placed bottle:
   1. Sample ~200 candidate points on the visible surface (FPS).
@@ -21,7 +21,7 @@ from typing import Optional
 
 
 # ---------------------------------------------------------------------------
-# Defaults (cited in docs/suction_point_gt_plan.md §"Default parameters")
+# Defaults (cited in docs/suction_gt/suction_gt_design.md §"Default parameters")
 # ---------------------------------------------------------------------------
 DEFAULTS = {
     "cup_radius_mm":           15.0,    # Sim-Suction default 1.5 cm
@@ -37,7 +37,7 @@ DEFAULTS = {
     "tau_wrench":              0.5,
     "match_tolerance_mm":      5.0,
     "g_accel":                 9.81,
-    # V1.5 (2026-05-06) additions — see docs/v1_5_implementation_plan.md
+    # V1.5 (2026-05-06) additions — see docs/suction_gt/suction_gt_v1_5_refinements.md
     "r_safety_mm":             5.0,     # margin past cup radius from mask boundary
     "nms_dist_mm":             5.0,     # min spacing between exported top-K points
     "plane_fit_max_pixels":    1000,    # cap dense disc-pixel sampling for runtime
@@ -282,7 +282,7 @@ def fit_plane_dense(uv: np.ndarray, r_px: int, depth_m: np.ndarray, K: np.ndarra
     that ALSO lies inside the bottle's visible mask. Back-project to 3D camera frame
     and fit a plane. Returns (normal, residual_rms_m, n_points_used).
 
-    See docs/v1_5_implementation_plan.md §"Change 1". Replaces the V1 sparse FPS-cloud
+    See docs/suction_gt/suction_gt_v1_5_refinements.md §"Change 1". Replaces the V1 sparse FPS-cloud
     plane fit which couldn't detect cap-body discontinuities."""
     H, W = depth_m.shape
     vs, us = disc_pixels(uv, r_px, H, W)

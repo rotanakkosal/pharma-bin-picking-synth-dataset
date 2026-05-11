@@ -60,6 +60,36 @@ This isn't bureaucracy — it's a 5-minute write-up that prevents 40-minute comp
 
 ---
 
+## Docs structure — where things live
+
+The `docs/` tree is organized by topic. **Add new docs into the right subdirectory; do not dump new files at the docs/ root.**
+
+```
+docs/
+├── README.md                              # index of every doc — update when adding a new one
+├── synth_realism_improvement_plan.md      # canonical project history (root, TERMINAL marker)
+├── suction_gt/                            # suction-point GT topic
+├── depth_noise/                           # L515 depth noise topic
+├── pose_export/                           # 6-DOF pose export topic
+├── sample_data/                           # mesh / sample data layout topic
+└── team/                                  # internal process (this file lives here)
+```
+
+**Filename rule: self-describing.** Filenames must be readable on their own, without relying on the parent directory for context. Use the form `<topic>_<role>.md` — e.g. `suction_gt_v1_implementation.md`, not just `v1_impl.md`. If you see the filename in a search result with no path, you should still know what it is.
+
+**Status block rule.** Every doc has a `Date:` and `Status:` block near the top. Status is one of: `Proposal`, `Approved for implementation`, `Shipped`, `Superseded`, or a terminal-state marker. Update it when state changes.
+
+**Cross-references.** Use relative paths between docs (e.g. `../suction_gt/suction_gt_design.md`). When you rename or move a doc, grep the repo for the old name and fix every reference — scripts and other docs both.
+
+**Adding a new doc:**
+1. Pick the right subdirectory (or create one if it's a brand-new topic).
+2. Use the `<topic>_<role>.md` filename pattern.
+3. Add a `Date:` + `Status:` block at the top.
+4. Add an entry in `docs/README.md` under the matching section.
+5. If any code references the doc path, update those references too.
+
+---
+
 ## Status hygiene after every change
 
 When you finish a piece of work — *before* you say "done":

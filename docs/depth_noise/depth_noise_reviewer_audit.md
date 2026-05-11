@@ -1,13 +1,13 @@
-# Adversarial Review — `l515_noise_plan.md`
+# Adversarial Review — `depth_noise_l515_design.md`
 
 **Date:** 2026-05-08
 **Reviewer:** independent technical audit (Claude Opus 4.7)
-**Document audited:** [docs/l515_noise_plan.md](../../l515_noise_plan.md)
+**Document audited:** [depth_noise_l515_design.md](depth_noise_l515_design.md)
 **Status of audit:** plan-stage review, written before implementation
 
 **Read but not critiqued (accepted as scope-locked):**
-- [docs/synth_realism_improvement_plan.md](../../synth_realism_improvement_plan.md)
-- [scripts/depth_noise.py](../../../scripts/depth_noise.py)
+- [../synth_realism_improvement_plan.md](../synth_realism_improvement_plan.md)
+- [../../scripts/depth_noise.py](../../scripts/depth_noise.py)
 - [scripts/generate_scene.py](../../../scripts/generate_scene.py)
 
 ---

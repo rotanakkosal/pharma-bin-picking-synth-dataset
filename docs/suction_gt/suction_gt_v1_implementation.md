@@ -1,8 +1,8 @@
 # V1 Implementation Plan — Suction-Point GT Generation
 
 Date: 2026-05-04
-Companion doc: [suction_point_gt_plan.md](suction_point_gt_plan.md) (the design)
-Status: **V1 shipped 2026-05-04** — all acceptance criteria met. Superseded by V1.5 (2026-05-06): dense plane fit, margin-aware edge clearance, NMS top-K — see `suction_point_gt_plan.md` for the V1.5 changes. Depth storage migrated to L515 native 0.25 mm units 2026-05-08 (`l515_noise_plan.md`).
+Companion doc: [suction_gt_design.md](suction_gt_design.md) (the design)
+Status: **V1 shipped 2026-05-04** — all acceptance criteria met. Superseded by V1.5 (2026-05-06): dense plane fit, margin-aware edge clearance, NMS top-K — see `suction_gt_design.md` for the V1.5 changes. Depth storage migrated to L515 native 0.25 mm units 2026-05-08 (`../depth_noise/depth_noise_l515_design.md`).
 
 ---
 
@@ -95,7 +95,7 @@ Add new QC checks:
 ## Acceptance criteria (V1 is "done" when)
 
 - [x] `compute_suction_gt()` runs without errors on all 7 bottle classes
-- [x] Output schema matches the spec in [suction_point_gt_plan.md §"Updated export schema"](suction_point_gt_plan.md)
+- [x] Output schema matches the spec in [suction_gt_design.md §"Updated export schema"](suction_gt_design.md)
 - [x] Per-scene runtime overhead < 10 seconds (measured via wall-clock) — actual 1.3 s
 - [x] `dataset_qc.py` reports 0 violations on a 5-scene batch
 - [x] Visualization shows top-K points landing on graspable surfaces (visual sanity check)

@@ -388,7 +388,7 @@ T_BLENDER_TO_CV = np.diag([1.0, -1.0, -1.0, 1.0])
 
 def extract_pose_cam(bottle_obj) -> tuple[np.ndarray, np.ndarray]:
     """Compose object→camera-frame transform from world-frame matrices.
-    See docs/pose_export_plan.md for conventions: R is 3x3 right-handed (det=+1),
+    See docs/pose_export/pose_export_design.md for conventions: R is 3x3 right-handed (det=+1),
     t in meters, both in camera frame matching `point_3d_cam` units used by suction GT.
 
     Two corrections applied:
@@ -536,7 +536,7 @@ def save_outputs(data: dict, amodal_masks: dict, scene_dir: Path, placed, cfg: d
     seg = data["instance_segmaps"][0]
     attrs = data["instance_attribute_maps"][0]
 
-    # Per-instance 6-DOF pose in camera frame. See docs/pose_export_plan.md.
+    # Per-instance 6-DOF pose in camera frame. See docs/pose_export/pose_export_design.md.
     pose_lookup = build_pose_lookup(placed)
 
     instances = []

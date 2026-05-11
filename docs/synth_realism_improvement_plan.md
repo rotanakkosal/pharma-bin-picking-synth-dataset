@@ -3,7 +3,7 @@
 **Date:** 2026-05-04 · **Updated:** 2026-05-11
 **Status:** 🔒 **TERMINAL (v1.0-final, 2026-05-11).** All P-items closed (P0/P1/P2/P3 shipped, P4 deferred, P4-lite shipped). Synth marked done for development. No real L515 captures available in dev (production-only resource), so Layer 3 predictive validity is intentionally not pursued. **Future changes are reactive only** — triggered by specific downstream failure modes (UOAIS, robot integration), not by speculative realism work.
 **Driver:** UOAIS-on-synth eval results + literature review
-**Team rules:** see [`team_workflow.md`](team_workflow.md) — pre-render gate, locked baselines, out-of-plan proposal flow. Read before kicking off any render.
+**Team rules:** see [`team/team_workflow.md`](team/team_workflow.md) — pre-render gate, locked baselines, out-of-plan proposal flow. Read before kicking off any render.
 
 > **Note for any future Claude session opening this doc:** the synth is done. Do not propose more lighting/material/HDRI work, do not propose new sweeps, do not propose calibration against "future real captures" — there are no future real captures in dev. Only act on this codebase if the user reports a concrete downstream failure that traces back here.
 
@@ -13,7 +13,7 @@
 |---|---|---|
 | **P0** | sample_data cleanup → ASCII layout, per-bottle folders | ✅ shipped |
 | **P1** | Class imbalance fix → render ≥30 scenes on canonical 7-mesh config and re-measure UOAIS IoU + per-class counts (~42 each) | ✅ **shipped 2026-05-11.** 30 scenes rendered at locked baseline `heights_m: [1.286]`; 1051 instances total. Original class-imbalance bug (2/5/3) resolved — all 7 classes now produce 133–164 instances (visibility 63–78%). UOAIS eval: precision 0.910, recall 0.759, **F1 0.828, mean IoU 0.853** — moved meaningfully from prior 6-scene baseline (F1 0.893, IoU 0.895). Now in SynTable-comparable range (their synth: 84.5 F-measure). Two outlier classes: photoreal kolmin_a_syrup recall 0.458, procedural white_pill_bottle 0.596 — hypothesis: high-luminance regions on photoreal labels trigger more specular dropouts (see "Outlier follow-up" below). |
-| **P2** | Depth sensor noise simulation | ✅ shipped — upgraded to **v2-l515** noise model on 2026-05-08; see `l515_noise_plan.md` for the L515-specific rewrite |
+| **P2** | Depth sensor noise simulation | ✅ shipped — upgraded to **v2-l515** noise model on 2026-05-08; see `depth_noise/depth_noise_l515_design.md` for the L515-specific rewrite |
 | **P3** | Lighting variety (color-temperature randomization 2500–6500 K, wider position spread, wider energy range) | ✅ shipped — partial form of SynTable §3 recipe (CCT-randomized point lights; full HDRI deferred for dependency reasons) |
 | **P4** | Material/texture variation per instance | ⏸ deferred (full scope: random material from a pool — HDPE, cardboard, frosted glass, metallic) — mesh diversity is the bigger driver. See P4-lite below for what was done in this scope-adjacent direction. |
 
@@ -141,7 +141,7 @@ Ordered by impact and confidence.
 - Existing render code carries workarounds (`stage_textured_mesh()` ASCII-staging, broken-mtllib fallback) that exist purely to compensate for messy upstream layout.
 - The class-imbalance bug we found was partly enabled by config drift across renders — easier when there's no canonical structure.
 
-**Action:** See [`sample_data_naming_convention.md`](sample_data_naming_convention.md) for the detailed proposal: one folder per object with ASCII ID, canonical filenames (`mesh.obj`, `mesh_uv.obj`, `label.png`), per-object `README.md`, and a machine-readable `index.yaml`.
+**Action:** See [`sample_data/sample_data_naming_convention.md`](sample_data/sample_data_naming_convention.md) for the detailed proposal: one folder per object with ASCII ID, canonical filenames (`mesh.obj`, `mesh_uv.obj`, `label.png`), per-object `README.md`, and a machine-readable `index.yaml`.
 
 **Approach:** Migration Option A from that doc — create the new `sample_data/bottles/<id>/` tree using symlinks first, switch config, verify render still works, then physically delete the old layout. Reversible if anything breaks.
 

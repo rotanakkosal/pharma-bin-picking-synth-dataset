@@ -2,8 +2,8 @@
 
 Date: 2026-05-05
 Companion docs:
-- [suction_point_gt_plan.md](suction_point_gt_plan.md) — suction GT (already implemented as V1)
-- [v1_implementation_plan.md](v1_implementation_plan.md) — V1 scope and acceptance criteria
+- [../suction_gt/suction_gt_design.md](../suction_gt/suction_gt_design.md) — suction GT (already implemented as V1)
+- [../suction_gt/suction_gt_v1_implementation.md](../suction_gt/suction_gt_v1_implementation.md) — V1 scope and acceptance criteria
 
 Status: Ready to implement. Small change (~30 LoC), no new dependencies.
 
@@ -14,7 +14,7 @@ Status: Ready to implement. Small change (~30 LoC), no new dependencies.
 From `project_synthetic_dataset.md` (memory) **known gaps**:
 > *"No 3D bottle pose export — pose-variety coverage untestable."*
 
-From `suction_point_gt_plan.md` §"Implementation phases":
+From `../suction_gt/suction_gt_design.md` §"Implementation phases":
 > *V1 ships analytical suction GT. Pose was not part of V1 scope but is a known coverage gap.*
 
 From the literature-backed evaluation framework (`project_synth_evaluation_framework.md`) **Layer 2 (Coverage characterization)**:

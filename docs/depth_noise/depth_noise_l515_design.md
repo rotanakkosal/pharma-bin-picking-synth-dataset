@@ -1,7 +1,7 @@
 # L515-Specific Depth Noise Plan
 
 **Date:** 2026-05-08
-**Status:** APPROVED for implementation; revised after independent reviewer audit (see `docs/agent-feedback/l515_noise_plan/review_2026-05-08.md`).
+**Status:** APPROVED for implementation; revised after independent reviewer audit (see `depth_noise_reviewer_audit.md`).
 **Driver:** Current `depth_noise.py` uses Lehrmann 2024's polynomial coefficients fit for **Kinect v1/v2 + MotionCam-3D**, NOT for the Intel L515. Literature shows our model is ~15× too noisy and misses the L515's actual dominant failure modes.
 
 ## Revisions in this version (post-review)

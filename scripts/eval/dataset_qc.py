@@ -144,7 +144,7 @@ def check_scene(scene_dir: Path, gt: dict, depth_range_mm: tuple[int, int]) -> d
     r["_suction_swrench"] = swrench_all
     r["_suction_combined"] = s_combined_all
 
-    # --- 3D pose checks (added 2026-05-05; see docs/pose_export_plan.md) -----
+    # --- 3D pose checks (added 2026-05-05; see docs/pose_export/pose_export_design.md) -----
     n_pose_present = 0
     t_norms: list[float] = []
     for inst in gt["instances"]:

@@ -277,11 +277,21 @@ Per the four-layer benchmark validation framework ([docs/](docs/)):
 pharma-bin-picking-synth-dataset/
 ├── README.md                     # this file
 ├── docs/
-│   ├── suction_point_gt_plan.md       # design + literature review
-│   ├── v1_implementation_plan.md      # V1 scope and acceptance criteria
-│   ├── pose_export_plan.md            # 6-DOF pose schema + frame conventions
-│   ├── synth_realism_improvement_plan.md
-│   └── sample_data_naming_convention.md
+│   ├── README.md                              # docs index
+│   ├── synth_realism_improvement_plan.md      # canonical project history (TERMINAL v1.0-final)
+│   ├── suction_gt/
+│   │   ├── suction_gt_design.md               # design + literature review
+│   │   ├── suction_gt_v1_implementation.md    # V1 scope, shipped 2026-05-04
+│   │   └── suction_gt_v1_5_refinements.md     # V1.5 refinements, shipped 2026-05-06
+│   ├── depth_noise/
+│   │   ├── depth_noise_l515_design.md         # L515-specific noise model
+│   │   └── depth_noise_reviewer_audit.md      # independent reviewer audit
+│   ├── pose_export/
+│   │   └── pose_export_design.md              # 6-DOF pose schema + frame conventions
+│   ├── sample_data/
+│   │   └── sample_data_naming_convention.md   # ASCII per-bottle layout
+│   └── team/
+│       └── team_workflow.md                   # synth-lead ↔ synth-dev process rules
 ├── scripts/
 │   ├── config.yaml                    # all scene/render/camera knobs
 │   ├── generate_scene.py              # main BlenderProc script

@@ -2,8 +2,8 @@
 
 Date: 2026-05-06
 Companion docs:
-- [suction_point_gt_plan.md](suction_point_gt_plan.md) — original design (V1)
-- [v1_implementation_plan.md](v1_implementation_plan.md) — V1 scope (already shipped)
+- [suction_gt_design.md](suction_gt_design.md) — original design (V1)
+- [suction_gt_v1_implementation.md](suction_gt_v1_implementation.md) — V1 scope (already shipped)
 
 Status: Ready to implement. Three targeted fixes informed by literature + a debugging finding from V1's actual output.
 
