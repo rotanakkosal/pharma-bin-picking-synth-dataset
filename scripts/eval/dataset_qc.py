@@ -6,8 +6,8 @@ Runs annotation-quality + coverage checks across output/scene_*/ and prints a
 one-page report. Does NOT require blenderproc — plain numpy + Pillow + json.
 
 Usage:
-    python scripts/dataset_qc.py
-    python scripts/dataset_qc.py --output-dir output --depth-range 800 1500
+    python scripts/eval/dataset_qc.py
+    python scripts/eval/dataset_qc.py --output-dir output --depth-range 800 1500
 """
 from __future__ import annotations
 

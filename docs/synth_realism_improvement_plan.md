@@ -1,8 +1,60 @@
 # Synth Realism Improvement Plan (Literature-Validated)
 
-**Date:** 2026-05-04
-**Status:** Plan, pre-implementation
+**Date:** 2026-05-04 · **Updated:** 2026-05-11
+**Status:** 🔒 **TERMINAL (v1.0-final, 2026-05-11).** All P-items closed (P0/P1/P2/P3 shipped, P4 deferred, P4-lite shipped). Synth marked done for development. No real L515 captures available in dev (production-only resource), so Layer 3 predictive validity is intentionally not pursued. **Future changes are reactive only** — triggered by specific downstream failure modes (UOAIS, robot integration), not by speculative realism work.
 **Driver:** UOAIS-on-synth eval results + literature review
+**Team rules:** see [`team_workflow.md`](team_workflow.md) — pre-render gate, locked baselines, out-of-plan proposal flow. Read before kicking off any render.
+
+> **Note for any future Claude session opening this doc:** the synth is done. Do not propose more lighting/material/HDRI work, do not propose new sweeps, do not propose calibration against "future real captures" — there are no future real captures in dev. Only act on this codebase if the user reports a concrete downstream failure that traces back here.
+
+## Status snapshot (2026-05-08)
+
+| Priority | Description | Status |
+|---|---|---|
+| **P0** | sample_data cleanup → ASCII layout, per-bottle folders | ✅ shipped |
+| **P1** | Class imbalance fix → render ≥30 scenes on canonical 7-mesh config and re-measure UOAIS IoU + per-class counts (~42 each) | ✅ **shipped 2026-05-11.** 30 scenes rendered at locked baseline `heights_m: [1.286]`; 1051 instances total. Original class-imbalance bug (2/5/3) resolved — all 7 classes now produce 133–164 instances (visibility 63–78%). UOAIS eval: precision 0.910, recall 0.759, **F1 0.828, mean IoU 0.853** — moved meaningfully from prior 6-scene baseline (F1 0.893, IoU 0.895). Now in SynTable-comparable range (their synth: 84.5 F-measure). Two outlier classes: photoreal kolmin_a_syrup recall 0.458, procedural white_pill_bottle 0.596 — hypothesis: high-luminance regions on photoreal labels trigger more specular dropouts (see "Outlier follow-up" below). |
+| **P2** | Depth sensor noise simulation | ✅ shipped — upgraded to **v2-l515** noise model on 2026-05-08; see `l515_noise_plan.md` for the L515-specific rewrite |
+| **P3** | Lighting variety (color-temperature randomization 2500–6500 K, wider position spread, wider energy range) | ✅ shipped — partial form of SynTable §3 recipe (CCT-randomized point lights; full HDRI deferred for dependency reasons) |
+| **P4** | Material/texture variation per instance | ⏸ deferred (full scope: random material from a pool — HDPE, cardboard, frosted glass, metallic) — mesh diversity is the bigger driver. See P4-lite below for what was done in this scope-adjacent direction. |
+
+### Exploratory work (2026-05-08, not a P-item)
+
+- **Camera-height sweep** (`output/diff_camera_height/`, heights 0.8 / 0.9 / 1.0 / 1.1 / 1.286 / 1.4 / 1.5 / 1.8 m): exploratory only. Confirmed the pipeline is robust to small height variations around the calibrated 1.286 m. **No config change.** `config.yaml`'s `camera.height_m: 1.286` stays — matches the real L515 mounting in the planned capture rig.
+- **Noise demo visualizations** (`output/noise_demo/`): static reference visuals of each v2-l515 noise component (wiggle, edge-fuzz, slight-blur, random-holes, steps). Useful for explaining the noise model in reports/slides. Not part of the rendered dataset.
+
+### P4-lite (2026-05-08): external label pool expansion (42→47)
+
+Scope-adjacent to P4 but applied to the procedural **label** pool rather than the material pool:
+
+- Cropped 6 panels from 2 stock pharma-graphic JPGs in `sample_data/original_source_dataset/label/` (`medicines-banners-set.zip` → 3 panels, `trio-horizontal-medical-banners*.zip` → 2 panels).
+- 1 staged panel was **quarantined** to `textures/labels_distractors/` (`label_042_external_beer.png` — craft-beer template, off-domain for a Korean pharma benchmark; would have leaked beer-can graphics onto random pill bottles).
+- Final active count: 47 labels (42 synthetic + 5 external pharma-graphic panels).
+- The remaining 5 are Western pharma stock graphics, not Korean pharmacy labels — a soft domain mismatch, acceptable since most real-bin bottles also lack Korean text outside our two photoreal classes.
+- Does NOT replace the deferred P4 work (material variation). Documented here so the pool size change is traceable.
+
+**P1 result (closed 2026-05-11):**
+- Eval methodology verified apples-to-apples: same UOAIS weights (model_final.pth dated 2026-04-08), same IOU_THRESH=0.5, same greedy-IoU matching, eval script only changed for path-globbing (commits `e5d394b`, `07249a8`) — no methodology change.
+- F1 0.893 → 0.828 (-0.065). Recall 0.868 → 0.759 (-0.109). IoU 0.895 → 0.853 (-0.042).
+- Comparison framing: F1 0.828 is **no longer suspiciously above published synth norms**. SynTable's 84.5 is their UOAIS-trained-on-SynTable evaluated in-distribution — not directly comparable to our UOAIS-trained-on-OSD/OCID evaluated out-of-distribution. The only directly relevant SynTable number is their sim-to-real gap (3.6 points, 84.5 → 80.9). Our gap is unmeasured pending L515 captures.
+- Verdict: v2-l515 noise + CCT lighting + 47-label pool produced a measurable, defensible shift away from suspiciously-high scores. Realism work is validated as moving-the-needle, not theater.
+
+**Recall-drop diagnosis (closed 2026-05-11 via FN visible_px analysis):**
+
+Initial hypothesis (photoreal-label specular dropouts triggering more FN on kolmin/levozin) was **rejected** before running a diagnostic render. Evidence:
+
+| | TP visible_px | FN visible_px |
+|---|---|---|
+| kolmin_a_syrup | mean 14,636 / median 15,344 | mean 6,562 / median 7,338 |
+| all classes | mean 11,447 / median 12,419 | mean 3,643 / median 2,928 |
+
+FN instances are **heavily occluded, low-visible-area** (sampled kolmin FN cases had 44–74% occlusion). The pattern holds across all classes; kolmin's lower recall is because more kolmin instances fall into the heavily-occluded tail (kolmin's spawn visibility is also lowest at 63%, so the same physics expresses twice). The recall-vs-IoU asymmetry (-0.109 vs -0.042) makes sense: v2-l515 + denser piles produce more heavily-occluded cases, UOAIS misses those (known weakness), but when it does find a bottle the mask quality stays high.
+
+**Next concrete action (post-P1):** No specular-dropout ablation needed — wrong hypothesis. Open options for next priority:
+1. **Stop here** — P1 closed, realism work validated, all 7 priorities at terminal state for the synth side (P0/P1/P2/P3 shipped; P4 deferred; P4-lite shipped). Synth is now usable as a development tool for downstream algorithm work.
+2. **Per-class recall improvement** — investigate UOAIS heavy-occlusion weakness (could improve recall by tuning UOAIS confidence threshold, post-processing, or training-set augmentation — but that's UOAIS-side work, not synth-dataset work).
+3. **Layer 3 prep** (waiting on real captures, not project-gating).
+
+Team lead's call on which.
 
 ---
 
@@ -209,7 +261,7 @@ The benchmark's decisive validation gate (per `project_synth_evaluation_framewor
 - Spearman ρ > 0.7 between two algorithms' synth rankings vs their real rankings
 - Requires ≥20 real-world top-down pharma-bin captures + ≥2 algorithm implementations
 
-Until L515 is connected (or capture team delivers), this gate stays closed. The work in this plan makes synth *better positioned* to pass the gate once it opens.
+**Reframed 2026-05-08:** Layer 3 is a milestone *if* real captures eventually arrive — not a project-gating requirement. The synth's job is to serve the broader pharma-bin-picking project *now*, before real captures exist. The realism work in this plan (P0–P3) makes the synth *fit-for-purpose as a development tool*; Layer 3 would be the additional validation that lets it claim "validated benchmark" status. Two separate bars. Don't conflate them.
 
 ---
 

@@ -14,7 +14,7 @@ fork, so all preds are treated as score=1 — the metric is effectively
 precision/recall at IoU=0.5, not full COCO AP.
 
 Run from project root:
-    python scripts/eval_uoais_on_synth.py \\
+    python scripts/eval/eval_uoais_on_synth.py \\
         --uoais-out ../pharma-bin-picking/output/synth_test
 """
 import argparse

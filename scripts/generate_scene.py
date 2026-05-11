@@ -40,7 +40,7 @@ def load_label_pool(labels_dir: Path) -> list[Path]:
     if not paths:
         raise FileNotFoundError(
             f"No labels found in {labels_dir}. "
-            f"Run `python scripts/gen_fake_labels.py --n 30` first."
+            f"Run `python scripts/archive/gen_fake_labels.py --n 30` first."
         )
     return paths
 

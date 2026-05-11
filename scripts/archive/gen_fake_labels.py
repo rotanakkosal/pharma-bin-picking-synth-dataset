@@ -11,7 +11,7 @@ in screenshot/IMG_1785.png):
 No Rx symbol, no warning triangle, no wide colored top band — none of those
 appear on the real bottles.
 
-Usage: python scripts/gen_fake_labels.py --n 40
+Usage: python scripts/archive/gen_fake_labels.py --n 40
 """
 import argparse
 import random

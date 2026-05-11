@@ -9,7 +9,7 @@ unwrap with `scale_to_bounds=True`) then wraps the crop once around the
 bottle body just like any synthetic label.
 
 Run from project root:
-    python scripts/crop_photoreal_labels.py
+    python scripts/archive/crop_photoreal_labels.py
 """
 from pathlib import Path
 from PIL import Image

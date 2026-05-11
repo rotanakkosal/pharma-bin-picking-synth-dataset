@@ -119,7 +119,7 @@ output/scene_NNNNNN/
 | `medicine_bottle_a` | 의약품 병 A | procedural | Capture team 2026-05-03 |
 | `medicine_bottle_b` | 의약품 병 B | procedural | Capture team 2026-05-03 |
 
-Photoreal labels use UV-mapped real-product photographs; procedural labels draw from a 42-image pool of synthetic Korean-medicine-style designs. Algorithms must not assume label content (text, color); only geometry.
+Photoreal labels use UV-mapped real-product photographs; procedural labels draw from a pool of **47 PNGs on disk** in `textures/labels/` (42 synthetic Korean-medicine-style designs + 5 cropped panels from stock pharma-graphic JPGs, added 2026-05-08). **44 are active at runtime** — `load_label_pool()` excludes 3 files matching `*fullcolor*.png` because those are template-only and not finished labels. One originally-staged panel (`label_042_external_beer.png`) was quarantined to `textures/labels_distractors/` (off-domain craft-beer template; not loaded by the pool globber). Algorithms must not assume label content (text, color); only geometry.
 
 ---
 
@@ -264,7 +264,10 @@ Per the four-layer benchmark validation framework ([docs/](docs/)):
 |---|---|
 | `v0.1.0-no-textures` | End-to-end pipeline, 4 classes, procedural materials. Segmentation only. |
 | `v0.2-suction+pose` | 7 classes, 2 photoreal labels, suction-point GT V1, 6-DOF pose, escape fix. |
-| `v0.2.5-suction-v1.5` | Suction GT upgraded: dense plane fit, margin-aware edge clearance, NMS top-K. **Current.** |
+| `v0.2.5-suction-v1.5` | Suction GT upgraded: dense plane fit, margin-aware edge clearance, NMS top-K. |
+| `v0.3-depth-l515` | L515-specific depth noise model (v2-l515): axial polynomial fitted to Berlin 2021 <0.5 mm bound, specular/dark/grazing dropouts, 5 mm radial bias, 0.25 mm quantization (storage switched to L515 native depth units). Lighting variety via CCT randomization 2500–6500 K. |
+| `v0.4-p1-shipped` | P1 30-scene re-render shipped (`output/h_1.286/scene_000001..000030`, 1051 instances). Class-imbalance bug fixed (was 2/5/3 for classes 5-7, now 133-164 across all 7). UOAIS eval: F1 0.828 / IoU 0.853 (prior 6-scene baseline was F1 0.893 / IoU 0.895 — realism work moved scores into published-synth norm range). Stock external labels added to procedural pool (47 PNGs on disk, 44 active after `*fullcolor*` filter; 1 off-domain panel quarantined). |
+| `v1.0-final` (2026-05-11) | **Final development version.** Synth marked terminal for dev. No real L515 captures available in development (production-only); Layer 3 predictive validity intentionally not pursued. All P-items closed (P0/P1/P2/P3 shipped, P4 deferred). Future changes are reactive only — driven by specific downstream failure modes (UOAIS, robot integration), not by speculative realism work. **Current.** |
 
 ---
 
@@ -319,6 +322,6 @@ Citation for this dataset (placeholder until publication):
   title  = {Pharma-Bin-Picking Synthetic Benchmark},
   author = {CBNU Picking-Arm Robot Project},
   year   = {2026},
-  note   = {v0.2-suction+pose}
+  note   = {v1.0-final}
 }
 ```

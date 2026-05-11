@@ -2,7 +2,7 @@
 visually map mesh shapes to class labels.
 
 Run from project root:
-    python scripts/visualize_classes.py --scene scene_000999
+    python scripts/viz/visualize_classes.py --scene scene_000999
 """
 import argparse
 import json

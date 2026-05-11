@@ -1,6 +1,6 @@
 """Visualize the top-K suction GT points overlaid on the scene RGB.
 
-Run: python scripts/viz_suction.py --scene output/scene_000999 [--top 5]
+Run: python scripts/viz/viz_suction.py --scene output/scene_000999 [--top 5]
 Saves: <scene>/suction_overlay.png
 """
 from __future__ import annotations

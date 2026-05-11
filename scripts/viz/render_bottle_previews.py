@@ -7,7 +7,7 @@
 # like in this pipeline — cropping from those is honest and cheap.
 #
 # Run:
-#     python scripts/render_bottle_previews.py
+#     python scripts/viz/render_bottle_previews.py
 
 import json
 from pathlib import Path
