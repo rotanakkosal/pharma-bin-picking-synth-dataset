@@ -1,11 +1,20 @@
 # Synth Realism Improvement Plan (Literature-Validated)
 
-**Date:** 2026-05-04 · **Updated:** 2026-05-11
-**Status:** 🔒 **TERMINAL (v1.0-final, 2026-05-11).** All P-items closed (P0/P1/P2/P3 shipped, P4 deferred, P4-lite shipped). Synth marked done for development. No real L515 captures available in dev (production-only resource), so Layer 3 predictive validity is intentionally not pursued. **Future changes are reactive only** — triggered by specific downstream failure modes (UOAIS, robot integration), not by speculative realism work.
+**Date:** 2026-05-04 · **Updated:** 2026-05-12
+**Status:** 🔒 **TERMINAL (v1.1-realistic-labels, 2026-05-12).** All P-items closed (P0/P1/P2/P3 shipped, P4 deferred, P4-lite shipped). v1.1 added a label-pool overhaul (30 realistic ChatGPT Korean labels replacing 37 fake-text ones) + UV band fix (label only on body, cap/base/back bare HDPE). Synth marked done for development. No real L515 captures available in dev (production-only resource), so Layer 3 predictive validity is intentionally not pursued. **Future changes are reactive only** — triggered by specific downstream failure modes (UOAIS, robot integration), not by speculative realism work.
 **Driver:** UOAIS-on-synth eval results + literature review
 **Team rules:** see [`team/team_workflow.md`](team/team_workflow.md) — pre-render gate, locked baselines, out-of-plan proposal flow. Read before kicking off any render.
 
 > **Note for any future Claude session opening this doc:** the synth is done. Do not propose more lighting/material/HDRI work, do not propose new sweeps, do not propose calibration against "future real captures" — there are no future real captures in dev. Only act on this codebase if the user reports a concrete downstream failure that traces back here.
+
+### v1.1 label overhaul + UV band fix (2026-05-12)
+
+Reactive-quality work driven by a concrete observation: the 37 procedural labels had visibly-fake Korean text, and `smart_unwrap()` stretched each label across the *entire* bottle (cap, body, base) leaving no bare HDPE — unlike real pharmacy bottles.
+
+- **Labels:** generated 30 realistic Korean pharmacy labels via ChatGPT (syrup/tablet/capsule/powder/injection; varied colors + layouts). Replaced the 37 fake-text procedural labels. Quarantined the 5 off-domain external pharma-graphic banners to `textures/labels_distractors/` (Latin text, stock graphics — out of domain now that we have real-looking Korean ones). Active pool: 32 (30 ChatGPT + 2 photoreal).
+- **UV bands:** `make_label_material()` now masks the label to a body rectangle — V ∈ [0.10, 0.80] (cap above, base below show bare HDPE), U ∈ [0.15, 0.85] (back of bottle bare; also hides the wrap seam). Bottles now render with a white cap + label band + white base, like real products.
+- **Eval impact:** UOAIS on the 30-scene v1.1 batch: F1 0.832, IoU 0.857 (vs v1.0-final 0.828 / 0.853). Essentially unchanged — expected, since UOAIS segments on geometry/depth, not label text. The realism gain is visual/domain-fidelity, not difficulty.
+- **Outlier classes (unchanged from v1.0):** blue_cap_pill_bottle (recall 0.458) and white_pill_bottle (0.575) — smallest bottles, get buried in clutter. Inherent small-object difficulty.
 
 ## Status snapshot (2026-05-08)
 

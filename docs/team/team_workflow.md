@@ -1,7 +1,7 @@
 # Team Workflow — pharma-bin-picking-synth-dataset
 
 **Status:** Working agreement, effective 2026-05-11
-**Project state:** 🔒 **Synth marked terminal at v1.0-final (2026-05-11).** No proactive work. Reactive-only — only act on this codebase if a downstream consumer (UOAIS, robot, etc.) reports a concrete failure that traces back here.
+**Project state:** 🔒 **Synth marked terminal at v1.1-realistic-labels (2026-05-12).** No proactive work. Reactive-only — only act on this codebase if a downstream consumer (UOAIS, robot, etc.) reports a concrete failure that traces back here.
 **Owner:** Synth dataset team lead
 
 Short rules so we stop wasting render compute on work that doesn't advance the plan.
