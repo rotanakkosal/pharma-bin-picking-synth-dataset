@@ -23,6 +23,9 @@ Map of every doc in this directory. Project state: 🔒 **TERMINAL (v1.0-final, 
 ### Sample data layout
 - **[sample_data/sample_data_naming_convention.md](sample_data/sample_data_naming_convention.md)** — ASCII per-bottle folder layout (`sample_data/bottles/<id>/`), canonical filenames (`mesh.obj`, `mesh_uv.obj`, `label.png`), `index.yaml`.
 
+### Evaluation
+- **[eval/eval_methodology.md](eval/eval_methodology.md)** — how UOAIS predictions are scored against the synth GT. The "one Hungarian match, three views" protocol (detection / F@.75 / occlusion-stratified), the 2026-05-12 protocol change (and why the F1 moved 0.832→0.845 without the model or GT changing), the v1.1 batch numbers, the white-on-white failure finding, why QuBER is off the table, and the depth-channel diagnostic that's the next step. Adversarial reviews (plan + implementation) at `pharma-bin/reviewer-feedback/eval_uoais_occlusion_stratified_recall/`.
+
 ## Team process
 
 - **[team/team_workflow.md](team/team_workflow.md)** — working agreement between `synth-lead` and `synth-dev` Claude sessions. Pre-render gate, locked baselines, out-of-plan proposal flow. **Read before kicking off any render.**
