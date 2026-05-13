@@ -135,35 +135,48 @@ QuBER ([arXiv:2306.16132](https://arxiv.org/abs/2306.16132)) refines the *qualit
 
 ---
 
-## Next step: depth-channel diagnostic (not retraining)
+## Depth-channel diagnostic — done 2026-05-12. Result: it's the model, not the preprocessing.
 
-UOAIS-Net is already RGB-**D** — it has a depth branch. The question is *why
-that branch isn't separating two adjacent white bottles* when their RGB contrast
-is low. White bottles have a distinct **depth** discontinuity at their boundary
-even when the colors match — so the depth signal *should* carry the separation.
+We hypothesised that `normalize_depth`'s fixed clip range (250–1500 mm at our
+1.286 m mount) was squeezing the inter-bottle depth gradient away before
+UOAIS-Net's depth branch could use it. **The diagnostic falsified that.**
 
-**Prime suspect:** `normalize_depth` in `pharma-bin/pharma-bin-picking` clips
-depth to a fixed range (≈ 250–1500 mm) and rescales to [0, 1]. Our bottles sit
-at ≈ 1080–1280 mm — so the entire useful depth variation is squeezed into
-≈ 13% of the [0, 1] range, and the silhouette gradient may be quantized away
-before the depth branch ever sees it.
+Method (`pharma-bin/pharma-bin-picking/tools/depth_diagnostic_white_on_white.py`):
+for each white-on-white miss, measure the height step between the missed bottle
+and its confused neighbour in raw mm, then track it through the actual pipeline
+path (`normalize_depth` → nearest-resize to 640×480 → `inpaint_depth` TELEA),
+and compare against one colourful bottle UOAIS *got right* as a yardstick.
 
-**Diagnostic (~half a day, no training):** dump the actual depth tensor fed to
-UOAIS for one of the white-on-white failure cases. Check whether the
-inter-bottle depth gradient survives normalization. If it doesn't → fix the
-normalization range (or use a percentile/adaptive range) and re-eval. If it
-does → the depth branch is seeing the signal and ignoring it, which is a deeper
-architectural issue (consider MSMFormer / UOIS-SAM as alternatives).
+| case | raw step | survives to model input | UOAIS found it? |
+|---|---|---|---|
+| missed pill_jar (scene 16) | 63 mm | ~11 levels | ❌ |
+| missed pill_jar (scene 12) | 48 mm | ~8 levels | ❌ |
+| missed medicine_bottle_b (scene 25) | 42 mm | ~4 levels | ❌ |
+| **colourful syrup UOAIS got right (scene 1)** | 44 mm | ~8 levels | ✅ |
 
-This also loops back to the L515 noise plan: if depth is the lever for the one
-real gap, depth realism matters *more*, not less. (But the L515 noise model is
-already shipped at v2-l515 and the synth is frozen — this is just context, not
-a reopen trigger.)
+The missed white bottles carry a depth step **as strong as or stronger than**
+the one UOAIS successfully used on the colourful bottle, and it survives the
+pipeline cleanly — the figures (`screenshot/depth_diag/scene_*_raw_vs_modelinput.png`)
+show the missed bottle as a distinct foreground depth blob in the image UOAIS
+actually receives, *more* prominent after the squish+inpaint than in raw. So:
 
-Lit pointers for the depth-separation angle: UOIS-Net-3D (Xie et al., T-RO 2021),
-MSMFormer (Lu et al. 2023), SAM-for-UOIS ([arXiv:2409.15481](https://arxiv.org/abs/2409.15481)).
-**Diagnose first** — don't pick a replacement model before knowing whether the
-existing depth channel is the problem.
+- **Not a preprocessing bug.** No range/resize/inpaint tweak will help — the signal is already there.
+- **Outcome (b): model-side limitation.** UOAIS-Net's RGB-D concat fusion is RGB-dominated; it ignores a clean depth boundary when the colours are too similar. We can't retrain it (synth is benchmark, not training data).
+- **Operating point:** ~94% recall on pickable bottles is the accepted level. The robot picks what UOAIS finds; the pile shifts after each pick; missed white-on-white bottles surface next cycle. Not blocking for the pick-and-place goal.
+
+**Open question (verify before any paper):** UOAIS's *training* depth normalization range. The config in this repo (`configs/R50_*.yaml`) says `DEPTH_RANGE: [2500, 15000]` mm, and `adet/data/dataset_mapper.py` applies it — but that range would clip tabletop training data to black, so either the config changed after the checkpoint was trained or the training depth is in non-mm units. Don't assert a training-range OOD claim until this is checked against the actual training dataloader. What *is* verified: our ~1.1 m scenes cluster in the top ~15% of the *inference* normalization band [250, 1500] mm — a mild "values bunched near the top" note, not a strong OOD claim.
+
+## Next step: a second algorithm (also a hypothesis test of the finding)
+
+Run a depth-first UOIS model — UOIS-Net-3D (Xie et al., T-RO 2021) or MSMFormer
+(Lu et al. 2023), or SAM-for-UOIS ([arXiv:2409.15481](https://arxiv.org/abs/2409.15481))
+— on the same 30-scene v1.1 batch with the same eval script (pretrained, no
+training, days of work). This is not a random second algorithm:
+
+- It tests the white-on-white finding directly. If a depth-first model catches those cases → clean confirmation that UOAIS-Net's concat fusion underweights depth, and the paper gets a *comparative* result instead of a single-model observation. If it doesn't → the case is harder than the depth-blob picture suggests — also informative.
+- It's load-bearing for the benchmark's headline claim. "Algorithm-agnostic validation benchmark" needs ≥2 algorithms run through it (Layer-3 in `project_synth_evaluation_framework.md`); a second algorithm is part of making the benchmark a credible contribution, not extra polish.
+
+Sequence: this comes after the (already-shipped) eval rewrite and the L515 v2 noise model, and before the publication write-up. Stage 5 stays a capped "rebuild needed" Step-0 item — not on the critical path.
 
 ---
 
