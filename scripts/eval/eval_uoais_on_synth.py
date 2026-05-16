@@ -132,6 +132,127 @@ def occ_bin(o: float) -> str:
     return OCC_BIN_LABELS[-1]
 
 
+# White-on-white failure-mode proxy: the two plain-white-HDPE classes UOAIS
+# under-detects (per project_white_on_white_depth_finding.md — blue_cap_pill_bottle
+# ~0.50, white_pill_bottle ~0.57 recall; the colourful classes are fine).
+WHITE_ON_WHITE_CIDS = {1, 7}
+
+
+def confidence_sweep(scene_dirs, npz_lookup, bucket_of_dir, synth_root,
+                     MIN_VPX: int, taus) -> None:
+    """Offline confidence-threshold sweep on persisted pred_scores. No
+    re-inference: filters score >= tau then redoes the Hungarian visible-mask
+    match per tau. Reports both directions (4a):
+      - high side: precision/recall/F1 + pickable-recall to pick the
+        precision>=0.95 & pickable-recall>=0.90 operating point (ten Pas 2017).
+      - low side: white-on-white-proxy recall vs tau, to confirm there is no
+        cheap recall recovery from surfacing low-confidence proposals.
+    """
+    # Cache per-scene GT + predictions once; re-threshold per tau in memory.
+    cache = []
+    have_scores = True
+    for sd in scene_dirs:
+        gt_path = sd / "scene_gt.json"
+        bk = bucket_of_dir(sd)
+        npz_path = npz_lookup.get((bk, sd.name))
+        if not gt_path.exists() or npz_path is None:
+            continue
+        npz = np.load(npz_path)
+        if "pred_scores" not in npz.files:
+            have_scores = False
+            break
+        pred_vis = npz["pred_visible"]
+        scores = npz["pred_scores"]
+        H, W = pred_vis.shape[1], pred_vis.shape[2]
+        gv, occ, vpx, cats = [], [], [], []
+        for inst in json.load(gt_path.open())["instances"]:
+            gv.append(_load_mask(sd / inst["visible_mask"], (H, W)))
+            occ.append(float(inst["occlusion_rate"]))
+            vpx.append(int(inst["visible_px"]))
+            cats.append(int(inst["category_id"]))
+        gv = np.stack(gv) if gv else np.zeros((0, H, W), bool)
+        cache.append({"pred_vis": pred_vis, "scores": scores, "gv": gv,
+                      "occ": np.array(occ), "vpx": np.array(vpx),
+                      "cats": np.array(cats)})
+
+    print()
+    print("=" * 78)
+    print("4a — CONFIDENCE-THRESHOLD SWEEP (offline, on persisted pred_scores)")
+    print("=" * 78)
+    if not have_scores:
+        print("  pred_scores absent in the .npz — re-run run_on_synth.py with a")
+        print("  LOW --confidence-threshold and explicit --nms-threshold to persist")
+        print("  scores, then re-run this sweep. (Sweep skipped.)")
+        return
+
+    print(f"  {'tau':>5} {'nPred':>6} {'TP':>5} {'FP':>5} {'FN':>5} "
+          f"{'prec':>6} {'recall':>7} {'F1':>6} {'pickable_R':>11} {'W-on-W_R':>9}")
+    rows = []
+    for tau in taus:
+        TP = FP = FN = 0
+        pick_tp = pick_n = 0
+        wow_tp = wow_n = 0
+        for c in cache:
+            keep = c["scores"] >= tau
+            pv = c["pred_vis"][keep]
+            gv = c["gv"]
+            occ, vpx, cats = c["occ"], c["vpx"], c["cats"]
+            match = hungarian_match(iou_matrix(pv, gv), IOU_THRESH)
+            g2p = {g: p for p, g in match}
+            matched_p = {p for p, _ in match}
+            for g in range(len(gv)):
+                if vpx[g] >= MIN_VPX:
+                    if g in g2p:
+                        TP += 1
+                    else:
+                        FN += 1
+                if occ[g] <= 0.30:
+                    pick_n += 1
+                    pick_tp += int(g in g2p)
+                if cats[g] in WHITE_ON_WHITE_CIDS:
+                    wow_n += 1
+                    wow_tp += int(g in g2p)
+            FP += sum(1 for p in range(len(pv))
+                      if p not in matched_p)
+        prec = TP / max(1, TP + FP)
+        rec = TP / max(1, TP + FN)
+        f1 = 2 * prec * rec / max(1e-9, prec + rec)
+        pick_r = pick_tp / max(1, pick_n)
+        wow_r = wow_tp / max(1, wow_n)
+        rows.append((tau, prec, rec, f1, pick_r, wow_r))
+        nP = sum(int((c["scores"] >= tau).sum()) for c in cache)
+        print(f"  {tau:>5.2f} {nP:>6} {TP:>5} {FP:>5} {FN:>5} "
+              f"{prec:>6.3f} {rec:>7.3f} {f1:>6.3f} {pick_r:>11.3f} {wow_r:>9.3f}")
+
+    # High side: smallest-FP (highest-precision) point that still meets the
+    # pickable-recall floor; among those maximise recall.
+    ok = [r for r in rows if r[1] >= 0.95 and r[4] >= 0.90]
+    print()
+    if ok:
+        # maximise overall recall subject to the two floors
+        choice = max(ok, key=lambda r: r[2])
+        print(f"  → operating point (precision>=0.95 AND pickable-recall>=0.90, "
+              f"max recall): tau={choice[0]:.2f}  "
+              f"[prec {choice[1]:.3f} / recall {choice[2]:.3f} / "
+              f"F1 {choice[3]:.3f} / pickable {choice[4]:.3f}]")
+        print(f"    justification: ten Pas et al. 2017 (arXiv:1706.09911) — "
+              f"robot-grasp pipelines favour precision (FP cost > FN cost).")
+    else:
+        print("  → NO tau satisfies precision>=0.95 AND pickable-recall>=0.90 on "
+              "this run.")
+        print("    Report the closest point and proceed with the reviewer.")
+    # Low side: white-on-white recovery check
+    lo = [r for r in rows if r[0] <= 0.5]
+    if lo:
+        base = next((r for r in rows if abs(r[0] - 0.5) < 1e-6), lo[-1])
+        best_lo = max(lo, key=lambda r: r[5])
+        print(f"  → low-side white-on-white-proxy recall: "
+              f"@tau0.5={base[5]:.3f}, best in [{lo[0][0]:.2f},0.50]="
+              f"{best_lo[5]:.3f} @tau{best_lo[0]:.2f} "
+              f"(prec there {best_lo[1]:.3f}). "
+              f"{'RECOVERY' if best_lo[5] - base[5] >= 0.05 and best_lo[1] >= 0.85 else 'no cheap recovery (expected — model-side, not threshold-side)'}")
+
+
 # ---------------------------------------------------------------------------
 def main() -> None:
     ap = argparse.ArgumentParser()
@@ -140,6 +261,9 @@ def main() -> None:
                     help="path to pharma-bin-picking/output/<subdir> containing scene_*.npz")
     ap.add_argument("--min-visible-px", type=int, default=100,
                     help="GT with fewer visible px (full-res) excluded from headline detection")
+    ap.add_argument("--sweep-only", action="store_true",
+                    help="run only the 4a confidence-threshold sweep and exit "
+                         "(needs pred_scores in the .npz)")
     args = ap.parse_args()
 
     synth_root = args.synth_output_dir.resolve()
@@ -161,6 +285,14 @@ def main() -> None:
         for p in uoais_root.glob(pat):
             bk = p.parent.name if p.parent.name.startswith("h_") else "all"
             npz_lookup[(bk, p.stem)] = p
+
+    # 4a — confidence-threshold sweep (both directions). Runs first so the
+    # operating-point pick is visible before the full eval. τ ∈ [0.05, 0.95].
+    sweep_taus = [round(0.05 + 0.05 * i, 2) for i in range(19)]
+    confidence_sweep(scene_dirs, npz_lookup, bucket_of_dir, synth_root,
+                     MIN_VPX, sweep_taus)
+    if args.sweep_only:
+        return
 
     # --- per-GT records: every GT instance gets a row in this list ----------
     # (bucket, scene, class_id, occ, vpx_full, truncated, matched, vis_iou, vis_dice, amo_iou, amo_dice)
