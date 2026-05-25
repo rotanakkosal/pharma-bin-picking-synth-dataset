@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Score UOAIS predictions against our synth GT.
 
 Pairs `output/scene_*/scene_gt.json` + `{visible,amodal}_masks/` (ours) with
